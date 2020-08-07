@@ -98,17 +98,21 @@ fn main() {
     loop {
         manager.draw().unwrap();
 
-        if poll(time::Duration::from_millis(0)).unwrap(){
+        let mut size = None;
+        while poll(time::Duration::from_millis(0)).unwrap(){
             match read().unwrap() {
                 Event::Resize(width, height) => {
-                    let size = Coord{x: width as i32, y: height as i32};
-                    manager.set_size(&size);
-                    background.borrow_mut().set_size(&size);
-                    planet.borrow_mut().set_center(&planet_pos(&size));
-                    moon.borrow_mut().set_center(&(planet.borrow().get_pos() + Coord{x: 25, y: -5}));
+                    size = Some(Coord{x: width as i32, y: height as i32}); 
                 }
                 _ => ()
             }
+        }
+
+        if let Some(size) = size {
+            manager.set_size(&size);
+            background.borrow_mut().set_size(&size);
+            planet.borrow_mut().set_center(&planet_pos(&size));
+            moon.borrow_mut().set_center(&(planet.borrow().get_pos() + Coord{x: 25, y: -5}));
         }
 
         planet.borrow_mut().inc_offset(&Coord{ x: 1, y: 0 });

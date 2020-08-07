@@ -1,7 +1,7 @@
 extern crate crossterm;
 pub use crossterm::style::Color;
 
-use std::ops;
+extern crate coord;
 
 pub use std::{
     rc::Rc, cell::RefCell
@@ -13,94 +13,7 @@ pub use drawsegment::Drawsegment;
 mod drawdata;
 pub use drawdata::DrawData;
 
-#[derive(Copy, Clone, Debug)]
-pub struct Coord {
-    pub x: i32,
-    pub y: i32,
-}
-
-impl ops::Add for Coord {
-    type Output = Coord;
-
-    fn add(self, other: Coord) -> Coord {
-        Coord {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        }
-    }
-}
-
-impl ops::AddAssign for Coord {
-    fn add_assign(&mut self, other: Coord) {
-        self.x += other.x;
-        self.y += other.y;
-    }
-}
-
-impl ops::Sub for Coord {
-    type Output = Coord;
-
-    fn sub(self, other: Coord) -> Coord {
-        Coord {
-            x: self.x - other.x,
-            y: self.y - other.y,
-        }
-    }
-}
-
-impl ops::SubAssign for Coord {
-    fn sub_assign(&mut self, other: Coord) {
-        self.x -= other.x;
-        self.y -= other.y;
-    }
-}
-
-impl ops::Rem for Coord {
-    type Output = Coord;
-
-    fn rem(self, other: Coord) -> Coord {
-        Coord {
-            x: self.x % other.x,
-            y: self.y % other.y,
-        }
-    }
-}
-
-impl ops::RemAssign for Coord {
-    fn rem_assign(&mut self, other: Coord) {
-        self.x %= other.x;
-        self.y %= other.y;
-    }
-}
-
-impl ops::Mul for Coord {
-    type Output = Coord;
-
-    fn mul(self, other: Coord) -> Coord {
-        Coord {
-            x: self.x * other.x,
-            y: self.y * other.y,
-        }
-    }
-}
-
-impl ops::Div for Coord {
-    type Output = Coord;
-
-    fn div(self, other: Coord) -> Coord {
-        Coord {
-            x: self.x / other.x,
-            y: self.y / other.y,
-        }
-    }
-}
-
-impl PartialEq for Coord {
-    fn eq(&self, other: &Self) -> bool {
-        if(self.x == other.x) && (self.y == other.x) { true }
-        else { false }
-    }
-}
+pub type Coord = coord::Coord<i32>;
 
 #[derive(Copy, Clone, Debug)]
 pub struct PixleData {
