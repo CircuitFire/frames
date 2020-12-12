@@ -16,44 +16,62 @@ impl MaskRule for Circle {
 
         let radius = biggest / 2;
 
-        Box::new(CircleLogic{
-            even: if biggest % 2 == 0 { true }
-                  else                { false },
-            center: Coord{
-                x: size.x / 2,
-                y: size.y / 2,
-            },
-            radius_sqr: radius * radius,
-        })
+        if biggest % 2 == 0 {
+            Box::new(CircleLogicEven{
+                center: Coord{
+                    x: size.x / 2,
+                    y: size.y / 2,
+                },
+                radius_sqr: radius * radius,
+            })
+        }
+        else{
+            Box::new(CircleLogicOdd{
+                center: Coord{
+                    x: size.x / 2,
+                    y: size.y / 2,
+                },
+                radius_sqr: radius * radius,
+            })
+        }
+        
     }
 }
 
-struct CircleLogic {
-    even: bool,
+struct CircleLogicEven {
     center: Coord,
     radius_sqr: i32,
 }
 
-impl MaskLogic for CircleLogic {
+impl MaskLogic for CircleLogicEven {
     fn mask(&self, pos: Coord) -> bool {
-        let mut mask = false;
-
-        let rel_x = pos.x - self.center.x;
-        let rel_y = pos.y - self.center.y;
-        let dis = (rel_x * rel_x) + (rel_y * rel_y);
-
-
-        if self.even {
-            if dis >= self.radius_sqr {
-                mask = true;
-            }
+        if calc_dis(pos, self.center) >= self.radius_sqr {
+            true
         }
-        else {
-            if dis > self.radius_sqr {
-                mask = true;
-            }
+        else{
+            false
         }
-
-        mask
     }
+}
+
+struct CircleLogicOdd {
+    center: Coord,
+    radius_sqr: i32,
+}
+
+impl MaskLogic for CircleLogicOdd {
+    fn mask(&self, pos: Coord) -> bool {
+        if calc_dis(pos, self.center) > self.radius_sqr {
+            true
+        }
+        else{
+            false
+        }
+    }
+}
+
+fn calc_dis(pos: Coord, center: Coord) -> i32 {
+    let rel_x = pos.x - center.x;
+    let rel_y = pos.y - center.y;
+    (rel_x * rel_x) + (rel_y * rel_y)
 }
