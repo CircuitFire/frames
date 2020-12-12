@@ -1,15 +1,20 @@
 use crate::shared::*;
 
+/// fills whatever any area with the pixel it has
+/// ## Functions
+/// - new
+/// - new_struct
+/// 
+/// ## Methods
+/// - set_pixel
+/// - get_pixel
 pub struct Fill {
-    pixle: Pixle,
+    pixel: Pixel,
 }
 
 impl Frame for Fill {
-    fn size(&self) -> Coord {
-        Coord{
-            x: 0,
-            y: 0,
-        }
+    fn size(&self) -> Option<Coord> {
+        None
     }
 
     fn get_draw_data(&self, area: &Vec<Drawsegment>, _: Coord, _: Coord) -> Vec<DrawData> {
@@ -21,7 +26,7 @@ impl Frame for Fill {
             //println!("{:?}\n\n{}", segment, segment.end - segment.start.x);
             data.push(DrawData {
                 start: segment.start,
-                data: vec![self.pixle; segment.len as usize]
+                data: vec![self.pixel; segment.len as usize]
             });
         }
         data
@@ -29,25 +34,25 @@ impl Frame for Fill {
 }
 
 impl Fill {
-    pub fn new(pixle: Pixle) -> Rc<RefCell<Fill>> {
+    pub fn new(pixel: Pixel) -> Rc<RefCell<Fill>> {
         Rc::new(RefCell::new(
             Fill {
-                pixle: pixle,
+                pixel: pixel,
             }
         ))
     }
     
-    pub fn new_struct(pixle: &Pixle) -> Fill {
+    pub fn new_struct(pixel: &Pixel) -> Fill {
         Fill {
-            pixle: *pixle,
+            pixel: *pixel,
         }
     }
 
-    pub fn set_pixle(&mut self, pixle: &Pixle) {
-        self.pixle = *pixle;
+    pub fn set_pixel(&mut self, pixle: &Pixel) {
+        self.pixel = *pixle;
     }
 
-    pub fn get_pixle(&self) -> Pixle {
-        self.pixle
+    pub fn get_pixel(&self) -> Pixel {
+        self.pixel
     }
 }

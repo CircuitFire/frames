@@ -14,6 +14,16 @@ use crossterm::{ExecutableCommand, QueueableCommand,
     cursor, ErrorKind
 };
 
+/// The frame Manager holds on to all of the data necessary for drawing frames into the terminal
+/// ## Functions
+/// - new
+/// 
+/// ## Methods
+/// - set_size
+/// - kill
+/// - objects
+/// - add_task
+/// - draw
 pub struct Manager {
     objects: Vec<Rc<RefCell<Object>>>,
     tasks: Vec<Task>,
@@ -22,7 +32,10 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(size: Coord, fill: &Pixle) -> Result<Manager, ErrorKind> {
+    /// Returns a new frame manager, and enters a new terminal screen.
+    /// - size = the current size of the terminal.
+    /// - fill = the default character printed when no other data is present.
+    pub fn new(size: Coord, fill: &Pixel) -> Result<Manager, ErrorKind> {
 
         stdout().queue(EnterAlternateScreen)?;
         stdout().queue(SetSize(size.x as u16, size.y as u16))?;
@@ -34,24 +47,27 @@ impl Manager {
             tasks: Vec::new(),
             size: size,
             fill: Fill::new_struct(fill),
-            //screen: screen,
         })
     }
 
+    /// Changes the size of the screen to the new size.
     pub fn set_size(&mut self, size: &Coord) {
         self.size = *size;
         self.add_task(Task::UpdateAll);
     }
 
+    /// returns to the orginal teminal screen.
     pub fn kill(&mut self) -> Result<(), ErrorKind> {
         stdout().execute(LeaveAlternateScreen)?;
         Ok(())
     }
 
+    //returns a mut refrence to the list of objects.
     pub fn objects(&mut self) -> &mut Vec<Rc<RefCell<Object>>>{
         &mut self.objects
     }
 
+    //adds the areas specified by the task to be updated next draw.
     pub fn add_task(&mut self, task: Task) {
         if let Some(first) = self.tasks.first() {
             match first {
@@ -72,9 +88,8 @@ impl Manager {
         }
     }
 
+    /// Makes a list of all rectangular areas that have requsted to be updated.
     fn make_rec_list(&mut self) -> Vec<Rec> {
-        //makes a list of all rectangular areas that have requsted to be updated.
-
         let mut reclist: Vec<Rec> = Vec::with_capacity(self.tasks.len());
         let range = Rec{ start: Coord {x: 0, y: 0}, end: self.size};
 
@@ -105,8 +120,8 @@ impl Manager {
         reclist
     }
 
+    /// Cuts up the list of rectangles into line segments with no overlap.
     fn drawlist(&mut self) -> Vec<DrawData> {
-        //cuts up the list of rectangles into line segments with no overlap.
         let mut recs = self.make_rec_list();
         let mut drawlist: Vec<DrawData> = Vec::new();
 
@@ -138,8 +153,8 @@ impl Manager {
         drawlist
     }
 
+    /// Draws all of the areas given by the tasks onto the screen.
     pub fn draw(&mut self) -> Result<(), ErrorKind> {
-        
         let mut drawsegs = self.drawlist();
         let objects = &self.objects;
 
@@ -158,13 +173,13 @@ impl Manager {
 }
 
 trait TerminalOut {
-    fn write_pixle(&mut self, pixle: &PixleData, last_colors: &mut [Option<Color>; 2]) -> Result<(), ErrorKind>;
+    fn write_pixle(&mut self, pixle: &PixelData, last_colors: &mut [Option<Color>; 2]) -> Result<(), ErrorKind>;
 
     fn write_datasegments(&mut self, segments: Vec<DrawData>) -> Result<(), ErrorKind>;
 }
 
 impl TerminalOut for std::io::Stdout {
-    fn write_pixle(&mut self, pixle: &PixleData, last_colors: &mut [Option<Color>; 2]) -> Result<(), ErrorKind> {
+    fn write_pixle(&mut self, pixle: &PixelData, last_colors: &mut [Option<Color>; 2]) -> Result<(), ErrorKind> {
 
         if !same_color(&pixle.fg, &last_colors[0]) {
             self.queue(SetForegroundColor(pixle.fg))?;
@@ -184,9 +199,9 @@ impl TerminalOut for std::io::Stdout {
 
             for pixle in segment.data {
                 match pixle {
-                    Pixle::Clear => { self.queue(cursor::MoveRight(1))?; }
+                    Pixel::Clear => { self.queue(cursor::MoveRight(1))?; }
 
-                    Pixle::Opaque(data) => {
+                    Pixel::Opaque(data) => {
                         self.write_pixle(&data, &mut last_colors)?;
                         last_colors[0] = Some(data.fg);
                         last_colors[1] = Some(data.bg);

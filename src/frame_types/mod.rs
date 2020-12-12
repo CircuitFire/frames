@@ -1,3 +1,11 @@
+//! A collection of default frame types.
+//! 
+//! - Basic
+//! - Fill
+//! - Text
+//! - Bundle
+//! - Mask
+
 mod basic;
 pub use basic::Basic;
 

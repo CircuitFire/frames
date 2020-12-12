@@ -16,10 +16,10 @@ fn main() {
     };
 
     let background_data = {
-        let s = Pixle::new('*', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
-        let b = Pixle::new('.', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
-        let x = Pixle::new('x', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
-        let n = Pixle::Clear;
+        let s = Pixel::new('*', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
+        let b = Pixel::new('.', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
+        let x = Pixel::new('x', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
+        let n = Pixel::Clear;
 
         let sprite = vec![
             s,n,n,n,n,n,n,n,n,n,n,n,n,n,
@@ -42,8 +42,8 @@ fn main() {
     }.unwrap();
 
     let planet_data = {
-        let y = Pixle::new_basic('█', Color::Rgb{r: 224, g: 167, b: 43});
-        let w = Pixle::new_basic('█', Color::Rgb{r: 230, g: 230, b: 230});
+        let y = Pixel::new_basic('█', Color::Rgb{r: 224, g: 167, b: 43});
+        let w = Pixel::new_basic('█', Color::Rgb{r: 230, g: 230, b: 230});
 
         let sprite = vec![
             y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,
@@ -69,16 +69,16 @@ fn main() {
             y,y,y,y,y,y,y,w,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,w,
         ];
 
-        frame_types::Mask::new(Basic::new(Coord{x: 42, y: 21}, sprite).unwrap(), Pixle::Clear, Circle::new())
+        Mask::new(Basic::new(Coord{x: 42, y: 21}, sprite).unwrap(), Pixel::Clear, mask_rules::Circle::new(), false)
     };
 
     let moon_data = {
-        let b = Pixle::new('█', Color::Rgb{r: 140, g: 140, b: 140}, Color::Rgb{r: 140, g: 140, b: 140});
+        let b = Pixel::new('█', Color::Rgb{r: 140, g: 140, b: 140}, Color::Rgb{r: 140, g: 140, b: 140});
 
-        frame_types::Mask::new(frame_types::Fill::new(b), Pixle::Clear, Circle::new())
+        Mask::new(Fill::new(b), Pixel::Clear, mask_rules::Circle::new(), false)
     };
 
-    let mut manager = frames::Manager::new(size, &Pixle::new('█', Color::Rgb{r: 0, g: 0, b: 0}, Color::Rgb{r: 0, g: 0, b: 0})).unwrap();
+    let mut manager = frames::Manager::new(size, &Pixel::new('█', Color::Rgb{r: 0, g: 0, b: 0}, Color::Rgb{r: 0, g: 0, b: 0})).unwrap();
 
     let background = Object::new(background_data.clone(), Coord {x: 0, y: 0}, size, Coord {x: 0, y: 0}, false, false, false);
 

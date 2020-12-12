@@ -16,15 +16,15 @@ pub use drawdata::DrawData;
 pub type Coord = coord::Coord<i32>;
 
 #[derive(Copy, Clone, Debug)]
-pub struct PixleData {
+pub struct PixelData {
     pub character: char,
     pub fg: Color,
     pub bg: Color,
 }
 
-impl PixleData {
-    pub fn new(character: char, fg: Color, bg: Color) -> PixleData {
-        PixleData {
+impl PixelData {
+    pub fn new(character: char, fg: Color, bg: Color) -> PixelData {
+        PixelData {
             character: character,
             fg: fg,
             bg: bg,
@@ -33,15 +33,15 @@ impl PixleData {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum Pixle {
+pub enum Pixel {
     Clear,
-    Opaque(PixleData),
+    Opaque(PixelData),
 }
 
-impl Pixle {
-    pub fn new(character: char, fg: Color, bg: Color) -> Pixle {
-        Pixle::Opaque(
-            PixleData {
+impl Pixel {
+    pub fn new(character: char, fg: Color, bg: Color) -> Pixel {
+        Pixel::Opaque(
+            PixelData {
                 character: character,
                 fg: fg,
                 bg: bg,
@@ -49,9 +49,9 @@ impl Pixle {
         )
     }
 
-    pub fn new_basic(character: char, fg: Color) -> Pixle {
-        Pixle::Opaque(
-            PixleData {
+    pub fn new_basic(character: char, fg: Color) -> Pixel {
+        Pixel::Opaque(
+            PixelData {
                 character: character,
                 fg: fg,
                 bg: fg,
@@ -61,7 +61,7 @@ impl Pixle {
 }
 
 pub trait Frame {
-    fn size(&self) -> Coord;
+    fn size(&self) -> Option<Coord>;
 
     fn get_draw_data(&self, area: &Vec<Drawsegment>, offset: Coord, size: Coord) -> Vec<DrawData>;
 }

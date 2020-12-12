@@ -3,7 +3,7 @@ use crate::shared::*;
 #[derive(Debug)]
 pub struct DrawData {
     pub start: Coord,
-    pub data: Vec<Pixle>
+    pub data: Vec<Pixel>
 }
 
 impl DrawData {

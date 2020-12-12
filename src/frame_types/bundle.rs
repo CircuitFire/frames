@@ -1,12 +1,20 @@
 use crate::shared::*;
 
+/// holds multiple frames and displays the one indicated by the index
+/// ## Functions
+/// - new
+/// 
+/// ## Methods
+/// - frames
+/// - set_index
+/// - inc_index
 pub struct Bundle {
     frames: Vec<Rc<RefCell<dyn Frame>>>,
     index: usize,
 }
 
 impl Frame for Bundle {
-    fn size(&self) -> Coord {
+    fn size(&self) -> Option<Coord> {
         self.frames[self.index].borrow().size()
     }
 
@@ -29,7 +37,7 @@ impl Bundle {
         &mut self.frames
     }
 
-    pub fn seg_index(&mut self, new: usize) {
+    pub fn set_index(&mut self, new: usize) {
         self.index = new;
     }
 

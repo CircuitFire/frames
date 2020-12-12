@@ -2,24 +2,33 @@ use crate::shared::*;
 
 use std::collections::VecDeque;
 
+/// Contains a queue of text entries that each have their own color
+/// ## Functions
+/// - new
+/// - new_sized
+/// 
+/// ## Methods
+/// - add_entry
+/// - add_entry_color
+/// - entries_len
+/// - entries_max
+/// - set_entry_text
+/// - get_entry_text
+/// - append_entry
+/// - set_entry_fg
+/// - get_entry_fg
+/// - set_entry_bg
+/// - get_entry_bg
 pub struct Text {
-    size: Option<usize>,
-    fill: PixleData,
+    max: Option<usize>,
+    fill: PixelData,
     entries: VecDeque<Entry>,
 }
 
 impl Frame for Text {
 
-    fn size(&self) -> Coord {
-        let size = if let Some(size) = self.size {
-            size as i32
-        }
-        else { 0 };
-
-        Coord {
-            x: self.entries.len() as i32,
-            y: size,
-        }
+    fn size(&self) -> Option<Coord> {
+        None
     }
 
     fn get_draw_data(&self, area: &Vec<Drawsegment>, offset: Coord, size: Coord) -> Vec<DrawData> {
@@ -36,20 +45,20 @@ impl Frame for Text {
 }
 
 impl Text {
-    pub fn new(fill: PixleData) -> Rc<RefCell<Text>> {
+    pub fn new(fill: PixelData) -> Rc<RefCell<Text>> {
         Rc::new(RefCell::new(
             Text {
-                size: None,
+                max: None,
                 fill: fill,
                 entries: VecDeque::new(),
             }
         ))
     }
 
-    pub fn new_sized(fill: PixleData, total_entry_num: usize) -> Rc<RefCell<Text>> {
+    pub fn new_sized(fill: PixelData, entry_max: usize) -> Rc<RefCell<Text>> {
         Rc::new(RefCell::new(
             Text {
-                size: Some(total_entry_num),
+                max: Some(entry_max),
                 fill: fill,
                 entries: VecDeque::new(),
             }
@@ -63,15 +72,19 @@ impl Text {
     pub fn add_entry_color(&mut self, text: &str, fg: Color, bg: Color) {
         let entry = Entry::new(text, fg, bg);
 
-        if let Some(size) = self.size {
+        if let Some(size) = self.max {
             if size == self.entries.len() { self.entries.pop_front(); }
         }
         
         self.entries.push_back(entry);
     }
 
-    pub fn entrys_len(&self) -> usize {
+    pub fn entries_len(&self) -> usize {
         self.entries.len()
+    }
+
+    pub fn entries_max(&self) -> Option<usize> {
+        self.max
     }
 
     pub fn set_entry_text(&mut self, index: usize, text: &str) {
@@ -142,14 +155,14 @@ fn replace(text: &mut String, search: &str, replace: &str) {
 struct EntryIter<'a> {
     entries: &'a VecDeque<Entry>,
     char_iter: Option<CharIter<'a>>,
-    fill: PixleData,
+    fill: PixelData,
     index: usize,
     cur_line: usize,
     width: usize,
 }
 
 impl<'a> EntryIter<'a> {
-    fn new(entries: &'a VecDeque<Entry>, fill: PixleData, index_skip: usize, line_skip: usize, width: usize) -> EntryIter<'a> {
+    fn new(entries: &'a VecDeque<Entry>, fill: PixelData, index_skip: usize, line_skip: usize, width: usize) -> EntryIter<'a> {
         let mut entry_iter = EntryIter {
             entries: entries,
             char_iter: None,
@@ -206,7 +219,7 @@ impl<'a> EntryIter<'a> {
                     if next != '\n' {
                         len -= 1;
     
-                        drawdata.data.push(Pixle::new(
+                        drawdata.data.push(Pixel::new(
                             next,
                             self.entries[self.index].fg,
                             self.entries[self.index].bg,
@@ -219,7 +232,7 @@ impl<'a> EntryIter<'a> {
             }
     
             for _ in 0..len {
-                drawdata.data.push(Pixle::new(
+                drawdata.data.push(Pixel::new(
                     self.fill.character,
                     self.entries[self.index].fg,
                     self.entries[self.index].bg,
@@ -233,7 +246,7 @@ impl<'a> EntryIter<'a> {
         }
         else {
             for _ in 0..seg.len {
-                drawdata.data.push(Pixle::Opaque(self.fill));
+                drawdata.data.push(Pixel::Opaque(self.fill));
             }
         }
         

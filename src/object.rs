@@ -1,5 +1,32 @@
 use crate::shared::*;
 
+/// An Object holds a reference to a frame and all of the positional data for how it is drawn onto the screen.
+/// ## Functions
+/// - new
+/// - new_basic
+/// - new_min
+/// 
+/// ## Methods
+/// - set_pos
+/// - set_center
+/// - set_size
+/// - set_offset
+/// - set_yflip
+/// - set_xflip
+/// - rot_cw
+/// - rot_ccw
+/// - rot_180
+/// - get_frame
+/// - set_frame_struct
+/// - set_frame_rc
+/// - inc_offset
+/// - get_pos
+/// - get_size
+/// - get_offset
+/// - get_center
+/// - get_rot
+/// - get_xflip
+/// - get_yflip
 pub struct Object {
     frame: Rc<RefCell<dyn Frame>>,
     pos: Coord,
@@ -11,6 +38,7 @@ pub struct Object {
 }
 
 impl Object {
+    /// Create a new Object manually setting each of the properties.
     pub fn new(frame: Rc<RefCell<dyn Frame>>, pos: Coord, size: Coord, offset: Coord, rot: bool, yflip: bool, xflip: bool) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(
             Object {
@@ -25,63 +53,85 @@ impl Object {
         ))
     }
 
+    /// Create a new Object with the default orientation.
     pub fn new_basic(frame: Rc<RefCell<dyn Frame>>, pos: Coord, size: Coord) -> Rc<RefCell<Self>> {
         Object::new(frame, pos, size, Coord {x:0, y:0}, false, false, false)
     }
 
-    pub fn new_min(frame: Rc<RefCell<dyn Frame>>, pos: Coord) -> Rc<RefCell<Self>> {
+    /// Create a new Object with the default orientation and matching the size of the given frame.
+    /// 
+    /// Some frames don't have normal sizes like Fill and Text.
+    pub fn new_min(frame: Rc<RefCell<dyn Frame>>, pos: Coord) -> Option<Rc<RefCell<Self>>> {
         let size = frame.borrow().size();
-        Object::new(frame, pos, size, Coord {x:0, y:0}, false, false, false)
+        
+        if let Some(size) = size {
+            Some(Object::new(frame, pos, size, Coord {x:0, y:0}, false, false, false))
+        }
+        else{
+            None
+        }
     }
 
+    /// Sets the Objects position to the provided coord.
     pub fn set_pos(&mut self, new: &Coord) {
         self.pos = *new;
     }
 
+    /// Sets the Objects Center position of the object to the provided coord.
     pub fn set_center(&mut self, new: &Coord) {
         self.pos = *new - (self.size / Coord{ x: 2, y: 2 });
     }
 
+    /// Sets the Objects size to the provided coord.
     pub fn set_size(&mut self, new: &Coord) {
         self.size = *new;
     }
 
+    /// Sets the Objects offset to the provided coord.
     pub fn set_offset(&mut self, new: &Coord) {
         self.offset = *new;
     }
 
+    /// Sets whether the Object rotates it frame by 90 degrees.
     pub fn set_rot(&mut self, new: bool) {
         self.rot = new;
     }
 
+    /// Sets whether the Object flips it frame over the Y axis.
     pub fn set_yflip(&mut self, new: bool) {
         self.yflip = new;
     }
 
+    /// Sets whether the Object flips it frame over the X axis.
     pub fn set_xflip(&mut self, new: bool) {
         self.xflip = new;
     }
 
+    /// Flips the frame over the x axis.
     pub fn flipx(&mut self) {
         self.xflip = !self.xflip;
     }
 
+    /// Flips the frame over the y axis.
     pub fn flipy(&mut self) {
         self.yflip = !self.yflip;
     }
 
+    /// rotates the frame clockwise.
     pub fn rot_cw(&mut self) {
         if self.rot { self.xflip = !self.xflip; }
         else { self.yflip = !self.yflip }
         self.rot = !self.rot;
     }
 
+    /// rotates the frame counter clockwise.
     pub fn rot_ccw(&mut self) {
         if !self.rot { self.xflip = !self.xflip; }
         else { self.yflip = !self.yflip }
         self.rot = !self.rot;
     }
 
+    /// rotates the frame 180 degrees.
     pub fn rot_180(&mut self) {
         self.yflip = !self.yflip;
         if !self.rot {
@@ -89,54 +139,65 @@ impl Object {
         }
     }
 
-    pub fn frame(&self) -> &Rc<RefCell<dyn Frame>> {
+    /// returns a reference to the held frame.
+    pub fn get_frame(&self) -> &Rc<RefCell<dyn Frame>> {
         &self.frame
     }
 
+    /// Sets the Objects frame using an object.
     pub fn set_frame_struct<T: Frame + 'static>(&mut self, frame: T) -> &Rc<RefCell<dyn Frame>> {
         self.frame = Rc::new(RefCell::new(frame));
         &self.frame
     }
 
+    /// Sets the Objects frame using a reference.
     pub fn set_frame_rc(&mut self, frame: Rc<RefCell<dyn Frame>>) {
         self.frame = frame;
     }
 
+    /// Increments the offset of the frame by the given amount.
     pub fn inc_offset(&mut self, inc: &Coord) {
         self.offset += *inc;
         self.offset %= self.size * Coord{ x: 2, y: 2 };
     }
 
+    /// Returns the current position of the object.
     pub fn get_pos(&self) -> Coord {
         self.pos
     }
 
+    /// Returns the current size of the object.
     pub fn get_size(&self) -> Coord {
         self.size
     }
 
+    /// Returns the current offset of the frame.
     pub fn get_offset(&self) -> Coord {
         self.offset
     }
 
+    /// Returns the current position of the center of the object.
     pub fn get_center(&self) -> Coord {
         self.pos + (self.size / Coord{ x: 2, y: 2 })
     }
 
+    /// Returns if the frame is currently rotated 90 degrees.
     pub fn get_rot(&self) -> bool {
         self.rot
     }
 
+    /// Returns if the frame is currently flipped over the X axis.
     pub fn get_xflip(&self) -> bool {
         self.xflip
     }
 
+    /// Returns if the frame is currently flipped over the Y axis.
     pub fn get_yflip(&self) -> bool {
         self.yflip
     }
 
+    /// Offsets and flips the local drawsegs depending on the objects orientation before being fed into the local frame.
     fn translate(&self, area: &mut Vec<Drawsegment>) -> Option<Vec<Drawsegment>> {
-        //ofsets and flips the local drawsegs depending on the objects orentaion before being fed into the local frame.
         if self.yflip {
             for seg in area.iter_mut() {
                 seg.start.x = self.size.x - seg.end_pos();
@@ -160,9 +221,8 @@ impl Object {
         else { None }
     }
 
+    /// Reverts the translated positions beck to their original position so they match with the full area.
     fn translate_back(&self, drawdata: &mut Vec<DrawData>, old_segs: Option<Vec<Drawsegment>>) {
-        //reverts the transated positions beck to their original position so they match with the full area.
-
         if let Some(old) = old_segs {
             *drawdata = DrawData::make_vertical(drawdata, &old);
         }
@@ -186,9 +246,8 @@ impl Object {
         }
     }
 
-    pub fn get_draw_data(&self, mut drawsegs: &mut Vec<DrawData>) {
-        // takes in the area being drawn to and copies the relivant local data from the held fram.
-        
+    /// Takes in the area being drawn to and copies the relevant local data from the held frame.
+    pub fn get_draw_data(&self, mut drawsegs: &mut Vec<DrawData>) { 
         let mut local_area = self.local_area(drawsegs);
         if !local_area.is_empty() {
 
@@ -213,9 +272,8 @@ impl Object {
         }
     }
 
+    /// Makes drawsegments that overlap with the total area and the objects local area.
     fn local_area(&self, area: &Vec<DrawData>) -> Vec<Drawsegment> {
-        // Makes drawsegments that overlap with the total area and the objects local area.
-
         let mut local_area: Vec<Drawsegment> = Vec::new();
         let max = self.pos + self.size;
         //println!("========================================================================================");
@@ -247,13 +305,13 @@ impl Object {
         local_area
     }
 
+    /// Outputs a update task for the frame manager containing the area of the object.
     pub fn update(&self) -> Task {
-        //outputs a update task for the frame manager containting the area of the object.
         Task::Update(self.get_rec())
     }
 
+    /// Outputs a update task for the frame manager containing the areas of the objects old and new position.
     pub fn move_to(&mut self, newpos: &Coord) -> Task {
-        //outputs a update task for the frame manager containting the areas of the objects old and new position.
         let old_rec = self.get_rec();
         self.pos = *newpos;
 
@@ -263,8 +321,8 @@ impl Object {
         )
     }
     
+    /// Makes a rectangle struct of the area the object is in.
     pub fn get_rec(&self) -> Rec {
-        //makes a rectangle struct of the area the object is in.
         Rec {
             start: self.pos,
             end: self.pos + self.size,
@@ -272,8 +330,8 @@ impl Object {
     }
 }
 
+/// Copies the draw data gotten from the local frame into the full segment being updated.
 fn copy_onto_area(drawsegs: &mut Vec<DrawData>, local_data: &Vec<DrawData>) {
-    //copys the draw data gotten from the local frame into the full segment being updated.
     let mut i = 0;
     for seg in local_data {
         while !seg.overlaps(&drawsegs[i]) {
@@ -281,10 +339,10 @@ fn copy_onto_area(drawsegs: &mut Vec<DrawData>, local_data: &Vec<DrawData>) {
         }
 
         let mut j = (seg.start.x - drawsegs[i].start.x) as usize;
-        for pixle in &seg.data {
-            match pixle {
-                Pixle::Opaque(_) => {
-                    drawsegs[i].data[j] = *pixle;
+        for pixel in &seg.data {
+            match pixel {
+                Pixel::Opaque(_) => {
+                    drawsegs[i].data[j] = *pixel;
                 },
                 _ => (),
             }
