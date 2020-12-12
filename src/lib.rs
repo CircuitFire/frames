@@ -30,3 +30,5 @@ mod manager;
 pub use manager::*;
 
 pub mod mask_rules;
+
+pub use crossterm;
