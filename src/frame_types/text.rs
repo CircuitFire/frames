@@ -19,6 +19,10 @@ use std::collections::VecDeque;
 /// - get_entry_fg
 /// - set_entry_bg
 /// - get_entry_bg
+/// - insert_entry
+/// - insert_entry_color
+/// - remove_entry
+/// - clear_entries
 pub struct Text {
     max: Option<usize>,
     fill: PixelData,
@@ -113,6 +117,28 @@ impl Text {
 
     pub fn get_entry_bg(&self, index: usize) -> Color {
         self.entries[index].bg
+    }
+
+    pub fn insert_entry(&mut self, index: usize, text: &str) {
+        self.insert_entry_color(index, text, self.fill.fg, self.fill.bg);
+    }
+
+    pub fn insert_entry_color(&mut self, index: usize, text: &str, fg: Color, bg: Color) {
+        let entry = Entry::new(text, fg, bg);
+
+        if let Some(size) = self.max {
+            if size == self.entries.len() { self.entries.pop_front(); }
+        }
+        
+        self.entries.insert(index, entry);
+    }
+
+    pub fn remove_entry(&mut self, index: usize) {
+        self.entries.remove(index);
+    }
+
+    pub fn clear_entries(&mut self) {
+        self.entries.clear();
     }
 }
 

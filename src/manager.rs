@@ -20,6 +20,7 @@ use crossterm::{ExecutableCommand, QueueableCommand,
 /// 
 /// ## Methods
 /// - set_size
+/// - get_size
 /// - kill
 /// - objects
 /// - add_task
@@ -32,7 +33,7 @@ pub struct Manager {
 }
 
 impl Manager {
-    /// Returns a new frame manager, and enters a new terminal screen.
+    /// Returns a new frame manager, enters a new terminal screen, and is set to update the whole screen on first draw.
     /// - size = the current size of the terminal.
     /// - fill = the default character printed when no other data is present.
     pub fn new(size: Coord, fill: &Pixel) -> Result<Manager, ErrorKind> {
@@ -44,16 +45,21 @@ impl Manager {
        
         Ok(Manager {
             objects: Vec::new(),
-            tasks: Vec::new(),
+            tasks: vec![Task::UpdateAll],
             size: size,
             fill: Fill::new_struct(fill),
         })
     }
 
-    /// Changes the size of the screen to the new size.
+    /// Changes the size of the screen to the new size, and refreshes the screen on next draw.
     pub fn set_size(&mut self, size: &Coord) {
         self.size = *size;
         self.add_task(Task::UpdateAll);
+    }
+
+    /// Gets the current manager size
+    pub fn get_size(&self) -> Coord {
+        self.size
     }
 
     /// returns to the orginal teminal screen.
