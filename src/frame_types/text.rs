@@ -140,6 +140,14 @@ impl Text {
     pub fn clear_entries(&mut self) {
         self.entries.clear();
     }
+
+    pub fn set_fill(&mut self, fill: PixelData) {
+        self.fill = fill;
+    }
+
+    pub fn set_max(&mut self, max: Option<usize>) {
+        self.max = max;
+    }
 }
 
 struct Entry {
