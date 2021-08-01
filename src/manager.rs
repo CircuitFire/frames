@@ -8,7 +8,7 @@ use std::{
     io::{stdout, Write},
 };
 
-use crossterm::{ExecutableCommand, QueueableCommand,
+use crossterm::{ExecutableCommand, QueueableCommand, execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, SetSize},
     style::{Print, SetForegroundColor, SetBackgroundColor},
     cursor, ErrorKind
@@ -20,6 +20,7 @@ use crossterm::{ExecutableCommand, QueueableCommand,
 /// 
 /// ## Methods
 /// - set_size
+/// - check_size_change
 /// - get_size
 /// - kill
 /// - objects
@@ -36,17 +37,18 @@ impl Manager {
     /// Returns a new frame manager, enters a new terminal screen, and is set to update the whole screen on first draw.
     /// - size = the current size of the terminal.
     /// - fill = the default character printed when no other data is present.
-    pub fn new(size: Coord, fill: &Pixel) -> Result<Manager, ErrorKind> {
+    pub fn new(fill: &Pixel) -> Result<Manager, ErrorKind> {
+        execute!(
+            stdout(),
+            EnterAlternateScreen,
+            cursor::Hide,
+            cursor::DisableBlinking,
+        );
 
-        stdout().queue(EnterAlternateScreen)?;
-        stdout().queue(SetSize(size.x as u16, size.y as u16))?;
-        stdout().queue(cursor::Hide)?;
-        stdout().flush()?;
-       
         Ok(Manager {
             objects: Vec::new(),
             tasks: vec![Task::UpdateAll],
-            size: size,
+            size: screen_size()?,
             fill: Fill::new_struct(fill),
         })
     }
@@ -55,6 +57,19 @@ impl Manager {
     pub fn set_size(&mut self, size: &Coord) {
         self.size = *size;
         self.add_task(Task::UpdateAll);
+    }
+
+    /// Checks if the screen size has changed and if it has sets it to the new size and returns true, else false.
+    pub fn check_size_change(&mut self) -> Result<bool, ErrorKind>{
+        let size = screen_size()?;
+
+        if self.size != size {
+            self.set_size(&size);
+            Ok(true)
+        }
+        else {
+            Ok(false)
+        }
     }
 
     /// Gets the current manager size
@@ -166,8 +181,8 @@ impl Manager {
 
         //let mut i = 0;
         for object in objects {
-            //println!("{}", i);
-            object.borrow().get_draw_data(&mut drawsegs);
+            let borrowed = object.borrow();
+            if borrowed.is_enabled() { borrowed.get_draw_data(&mut drawsegs); }
             //i += 1;
         }
  
@@ -229,4 +244,12 @@ fn same_color(new: &Color, old: &Option<Color>) -> bool {
             else { false }
         }
     }
+}
+
+fn screen_size() -> Result<Coord, ErrorKind> {
+    let (x, y) = crossterm::terminal::size()?;
+    Ok(Coord{
+        x: x as i32,
+        y: y as i32,
+    })
 }

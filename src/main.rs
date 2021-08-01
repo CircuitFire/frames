@@ -2,7 +2,7 @@
 use frames::*;
 use frame_types::*;
 use crossterm::ExecutableCommand;
-use crossterm::event::{poll, read, Event};
+use crossterm::event::{poll, read};
 use crossterm::terminal;
 use std::io;
 use std::{thread, time};
@@ -78,14 +78,14 @@ fn main() {
         Mask::new(Fill::new(b), Pixel::Clear, mask_rules::Circle::new(), false)
     };
 
-    let mut manager = frames::Manager::new(size, &Pixel::new('█', Color::Rgb{r: 0, g: 0, b: 0}, Color::Rgb{r: 0, g: 0, b: 0})).unwrap();
+    let mut manager = frames::Manager::new(&Pixel::new('█', Color::Rgb{r: 0, g: 0, b: 0}, Color::Rgb{r: 0, g: 0, b: 0})).unwrap();
 
-    let background = Object::new(background_data.clone(), Coord {x: 0, y: 0}, size, Coord {x: 0, y: 0}, false, false, false);
+    let background = Object::new_from_default(Object::default(background_data.clone(), Coord {x: 0, y: 0}, size));
 
-    let planet = Object::new(planet_data.clone(), Coord {x: 0, y: 0}, Coord {x: 21, y: 21}, Coord {x: 0, y: 0}, false, false, false);
+    let planet = Object::new_from_default(Object::default(planet_data.clone(), Coord {x: 0, y: 0}, Coord {x: 21, y: 21}));
     planet.borrow_mut().set_center(&planet_pos(&size));
 
-    let moon = Object::new(moon_data.clone(),Coord {x: 0, y: 0}, Coord {x: 7, y: 7}, Coord {x: 0, y: 0}, false, false, false);
+    let moon = Object::new_from_default(Object::default(moon_data.clone(),Coord {x: 0, y: 0}, Coord {x: 7, y: 7}));
     moon.borrow_mut().set_center(&(planet.borrow().get_pos() + Coord{x: 25, y: -5}));
 
     manager.objects().push(background.clone());
@@ -94,29 +94,29 @@ fn main() {
     
 
     manager.add_task(frames::Task::UpdateAll);
+
+    let mut prev_size_update = 0;
     
     loop {
-        manager.draw().unwrap();
+        while poll(time::Duration::from_millis(0)).unwrap() { read().unwrap(); }
 
-        let mut size = None;
-        while poll(time::Duration::from_millis(0)).unwrap(){
-            match read().unwrap() {
-                Event::Resize(width, height) => {
-                    size = Some(Coord{x: width as i32, y: height as i32}); 
-                }
-                _ => ()
-            }
+        if prev_size_update != 0 {
+            manager.add_task(frames::Task::UpdateAll);
+            prev_size_update -= 1;
         }
 
-        if let Some(size) = size {
-            manager.set_size(&size);
+        if manager.check_size_change().unwrap() {
+            let size = manager.get_size();
             background.borrow_mut().set_size(&size);
             planet.borrow_mut().set_center(&planet_pos(&size));
             moon.borrow_mut().set_center(&(planet.borrow().get_pos() + Coord{x: 25, y: -5}));
+            prev_size_update = 3;
         }
 
         planet.borrow_mut().inc_offset(&Coord{ x: 1, y: 0 });
         manager.add_task(planet.borrow().update());
+
+        manager.draw().unwrap();
 
         thread::sleep(time::Duration::from_millis(100));
     }

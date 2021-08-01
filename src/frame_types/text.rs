@@ -69,11 +69,11 @@ impl Text {
         ))
     }
 
-    pub fn add_entry(&mut self, text: &str) {
+    pub fn add_entry(&mut self, text: String) {
         self.add_entry_color(text, self.fill.fg, self.fill.bg);
     }
 
-    pub fn add_entry_color(&mut self, text: &str, fg: Color, bg: Color) {
+    pub fn add_entry_color(&mut self, text: String, fg: Color, bg: Color) {
         let entry = Entry::new(text, fg, bg);
 
         if let Some(size) = self.max {
@@ -91,7 +91,7 @@ impl Text {
         self.max
     }
 
-    pub fn set_entry_text(&mut self, index: usize, text: &str) {
+    pub fn set_entry_text(&mut self, index: usize, text: String) {
         self.entries[index].set_text(text);
     }
 
@@ -99,7 +99,7 @@ impl Text {
         &self.entries[index].text
     }
 
-    pub fn append_entry(&mut self, index: usize, text: &str) {
+    pub fn append_entry(&mut self, index: usize, text: String) {
         self.entries[index].append(text);
     }
 
@@ -119,11 +119,11 @@ impl Text {
         self.entries[index].bg
     }
 
-    pub fn insert_entry(&mut self, index: usize, text: &str) {
+    pub fn insert_entry(&mut self, index: usize, text: String) {
         self.insert_entry_color(index, text, self.fill.fg, self.fill.bg);
     }
 
-    pub fn insert_entry_color(&mut self, index: usize, text: &str, fg: Color, bg: Color) {
+    pub fn insert_entry_color(&mut self, index: usize, text: String, fg: Color, bg: Color) {
         let entry = Entry::new(text, fg, bg);
 
         if let Some(size) = self.max {
@@ -157,20 +157,20 @@ struct Entry {
 }
 
 impl Entry {
-    fn new(text: &str, fg: Color, bg: Color) -> Self {
+    fn new(text: String, fg: Color, bg: Color) -> Self {
         Entry {
-            text: sanitize(String::from(text)),
+            text: sanitize(text),
             fg: fg,
             bg: bg,
         }
     }
 
-    fn set_text(&mut self, text: &str) {
-        self.text = sanitize(String::from(text));
+    fn set_text(&mut self, text: String) {
+        self.text = sanitize(text);
     }
 
-    fn append(&mut self, text: &str) {
-        self.text.push_str(&sanitize(String::from(text)));
+    fn append(&mut self, text: String) {
+        self.text.push_str(&sanitize(text));
     }
 }
 

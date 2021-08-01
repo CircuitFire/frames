@@ -12,8 +12,8 @@
 //!   - Mask
 //! - mask-rules
 //!   - Circle
-//! - Pixle
-//! - PixleData
+//! - Pixel
+//! - PixelData
 //! - Coord
 //! - Rec
 //! - Task

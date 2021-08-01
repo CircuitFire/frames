@@ -7,6 +7,7 @@ use crate::shared::*;
 /// - new_min
 /// 
 /// ## Methods
+/// - set_enabled
 /// - set_pos
 /// - set_center
 /// - set_size
@@ -20,6 +21,7 @@ use crate::shared::*;
 /// - set_frame_struct
 /// - set_frame_rc
 /// - inc_offset
+/// - is_enabled
 /// - get_pos
 /// - get_size
 /// - get_offset
@@ -35,11 +37,26 @@ pub struct Object {
     rot: bool,
     yflip: bool,
     xflip: bool,
+    enabled: bool,
 }
 
 impl Object {
+    /// Creates creates an Object with all unspecified felids set to defaults. To be used with new_from_default() and struct update syntax.
+    pub fn default(frame: Rc<RefCell<dyn Frame>>, pos: Coord, size: Coord) -> Self {
+        Object {
+            frame: frame,
+            pos: pos,
+            size: size,
+            offset: Coord {x:0, y:0},
+            rot: false,
+            yflip: false,
+            xflip: false,
+            enabled: true,
+        }
+    }
+
     /// Create a new Object manually setting each of the properties.
-    pub fn new(frame: Rc<RefCell<dyn Frame>>, pos: Coord, size: Coord, offset: Coord, rot: bool, yflip: bool, xflip: bool) -> Rc<RefCell<Self>> {
+    pub fn new(frame: Rc<RefCell<dyn Frame>>, pos: Coord, size: Coord, offset: Coord, rot: bool, yflip: bool, xflip: bool, enabled: bool) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(
             Object {
                 frame: frame,
@@ -49,13 +66,14 @@ impl Object {
                 rot: rot,
                 yflip: yflip,
                 xflip: xflip,
+                enabled: enabled,
             }
         ))
     }
 
     /// Create a new Object with the default orientation.
-    pub fn new_basic(frame: Rc<RefCell<dyn Frame>>, pos: Coord, size: Coord) -> Rc<RefCell<Self>> {
-        Object::new(frame, pos, size, Coord {x:0, y:0}, false, false, false)
+    pub fn new_from_default(default: Object) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(default))
     }
 
     /// Create a new Object with the default orientation and matching the size of the given frame.
@@ -65,11 +83,21 @@ impl Object {
         let size = frame.borrow().size();
         
         if let Some(size) = size {
-            Some(Object::new(frame, pos, size, Coord {x:0, y:0}, false, false, false))
+            Some(Object::new(frame, pos, size, Coord {x:0, y:0}, false, false, false, true))
         }
         else{
             None
         }
+    }
+
+    /// Sets if the object is enabled to the provided bool.
+    pub fn set_enabled(&mut self, enabled: bool) {
+        self.enabled = enabled;
+    }
+
+    /// Gets the Objects enabled value.
+    pub fn is_enabled(&self) -> bool {
+        self.enabled
     }
 
     /// Sets the Objects position to the provided coord.
