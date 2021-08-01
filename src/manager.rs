@@ -9,7 +9,7 @@ use std::{
 };
 
 use crossterm::{ExecutableCommand, QueueableCommand, execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, SetSize},
+    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
     style::{Print, SetForegroundColor, SetBackgroundColor},
     cursor, ErrorKind
 };
