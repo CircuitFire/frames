@@ -20,7 +20,7 @@ use crossterm::{ExecutableCommand, QueueableCommand, execute,
 /// 
 /// ## Methods
 /// - set_size
-/// - check_size_change
+/// - match_size
 /// - get_size
 /// - kill
 /// - objects
@@ -60,7 +60,7 @@ impl Manager {
     }
 
     /// Checks if the screen size has changed and if it has sets it to the new size and returns true, else false.
-    pub fn check_size_change(&mut self) -> Result<bool, ErrorKind>{
+    pub fn match_size(&mut self) -> Result<bool, ErrorKind>{
         let size = screen_size()?;
 
         if self.size != size {

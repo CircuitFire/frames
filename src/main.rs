@@ -105,7 +105,7 @@ fn main() {
             prev_size_update -= 1;
         }
 
-        if manager.check_size_change().unwrap() {
+        if manager.match_size().unwrap() {
             let size = manager.get_size();
             background.borrow_mut().set_size(&size);
             planet.borrow_mut().set_center(&planet_pos(&size));
