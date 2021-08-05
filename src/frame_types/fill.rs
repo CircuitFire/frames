@@ -42,14 +42,14 @@ impl Fill {
         ))
     }
     
-    pub fn new_struct(pixel: &Pixel) -> Fill {
+    pub fn new_struct(pixel: Pixel) -> Fill {
         Fill {
-            pixel: *pixel,
+            pixel: pixel,
         }
     }
 
-    pub fn set_pixel(&mut self, pixle: &Pixel) {
-        self.pixel = *pixle;
+    pub fn set_pixel(&mut self, pixle: Pixel) {
+        self.pixel = pixle;
     }
 
     pub fn get_pixel(&self) -> Pixel {

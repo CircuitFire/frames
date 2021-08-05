@@ -87,9 +87,9 @@ impl Basic {
         ((coord.y * self.size.x) + coord.x) as usize
     } 
 
-    pub fn set_pixel(&mut self, coord: &Coord, pixel: &Pixel) {
+    pub fn set_pixel(&mut self, coord: &Coord, pixel: Pixel) {
         let index = self.flat_pos(coord);
 
-        self.pixels[index] = *pixel;
+        self.pixels[index] = pixel;
     }
 }

@@ -48,16 +48,6 @@ impl Pixel {
             }
         )
     }
-
-    pub fn new_basic(character: char, fg: Color) -> Pixel {
-        Pixel::Opaque(
-            PixelData {
-                character: character,
-                fg: fg,
-                bg: fg,
-            }
-        )
-    }
 }
 
 pub trait Frame {

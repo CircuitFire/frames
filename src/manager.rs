@@ -35,9 +35,8 @@ pub struct Manager {
 
 impl Manager {
     /// Returns a new frame manager, enters a new terminal screen, and is set to update the whole screen on first draw.
-    /// - size = the current size of the terminal.
     /// - fill = the default character printed when no other data is present.
-    pub fn new(fill: &Pixel) -> Result<Manager, ErrorKind> {
+    pub fn new_fill(fill: Pixel) -> Result<Manager, ErrorKind> {
         execute!(
             stdout(),
             EnterAlternateScreen,
@@ -51,6 +50,16 @@ impl Manager {
             size: screen_size()?,
             fill: Fill::new_struct(fill),
         })
+    }
+
+    /// Returns a new frame manager, enters a new terminal screen, and is set to update the whole screen on first draw.
+    pub fn new() -> Result<Manager, ErrorKind> {
+        Manager::new_fill(Pixel::new(' ', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0}))
+    }
+
+    /// Sets the managers fill value.
+    pub fn set_fill(&mut self, fill: Pixel) {
+        self.fill = Fill::new_struct(fill);
     }
 
     /// Changes the size of the screen to the new size, and refreshes the screen on next draw.

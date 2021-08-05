@@ -42,8 +42,8 @@ fn main() {
     }.unwrap();
 
     let planet_data = {
-        let y = Pixel::new_basic('█', Color::Rgb{r: 224, g: 167, b: 43});
-        let w = Pixel::new_basic('█', Color::Rgb{r: 230, g: 230, b: 230});
+        let y = Pixel::new('█', Color::Rgb{r: 224, g: 167, b: 43}, Color::Rgb{r: 0, g: 0, b: 0});
+        let w = Pixel::new('█', Color::Rgb{r: 230, g: 230, b: 230}, Color::Rgb{r: 0, g: 0, b: 0});
 
         let sprite = vec![
             y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,
@@ -78,7 +78,7 @@ fn main() {
         Mask::new(Fill::new(b), Pixel::Clear, mask_rules::Circle::new(), false)
     };
 
-    let mut manager = frames::Manager::new(&Pixel::new('█', Color::Rgb{r: 0, g: 0, b: 0}, Color::Rgb{r: 0, g: 0, b: 0})).unwrap();
+    let mut manager = frames::Manager::new().unwrap();
 
     let background = Object::new_from_default(Object::default(background_data.clone(), Coord {x: 0, y: 0}, size));
 
