@@ -30,7 +30,7 @@ pub struct Object {
     pub yflip: bool,
     pub xflip: bool,
     pub enabled: bool,
-    pub size_update_fn: Option<Box<dyn SizeUpdate>>,
+    pub size_update: Option<Box<dyn SizeUpdate>>,
 }
 
 impl Object {
@@ -46,7 +46,7 @@ impl Object {
                 yflip: yflip,
                 xflip: xflip,
                 enabled: enabled,
-                size_update_fn: None,
+                size_update: None,
             }
         ))
     }
@@ -74,14 +74,9 @@ impl Object {
         }
     }
 
-    /// Set the function that is used to update the objects position size and if its enabled when the screen size is updated.
-    pub fn set_size_update_fn(&mut self, func: Option<Box<dyn SizeUpdate>>) {
-        self.size_update_fn = func;
-    }
-
     /// Gets called by the manager every time the the screen size is updated.
     pub fn size_update(&mut self, new_size: &Coord){
-        if let Some(func) = &mut self.size_update_fn {
+        if let Some(func) = &mut self.size_update {
             func.size_update(new_size, &mut self.pos, &mut self.size, &mut self.enabled);
         }
     }

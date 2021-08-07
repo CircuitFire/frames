@@ -17,6 +17,10 @@
 //! - Coord
 //! - Rec
 //! - Task
+//! ## Traits
+//! - SizeUpdate
+//! - MaskRule
+//! - MaskLogic
 
 mod shared;
 pub use shared::*;

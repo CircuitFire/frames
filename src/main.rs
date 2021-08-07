@@ -76,13 +76,13 @@ fn main() {
     let mut manager = Manager::new().unwrap();
 
     let background = Object::new_basic(background_data.clone(), manager.get_size());
-    background.borrow_mut().set_size_update_fn(Some(Box::new(BackGroundUpdate{})));
+    background.borrow_mut().size_update = Some(Box::new(BackGroundUpdate{}));
 
     let planet = Object::new_basic(planet_data.clone(), Coord{x: 21, y: 21});
-    planet.borrow_mut().set_size_update_fn(Some(Box::new(PlanetUpdate{})));
+    planet.borrow_mut().size_update = Some(Box::new(PlanetUpdate{}));
 
     let moon = Object::new_basic(moon_data.clone(), Coord{x: 10, y: 10});
-    moon.borrow_mut().set_size_update_fn(Some(Box::new(MoonUpdate{planet: planet.clone()})));
+    moon.borrow_mut().size_update = Some(Box::new(MoonUpdate{planet: planet.clone()}));
 
     manager.objects.push(background.clone());
     manager.objects.push(planet.clone());
