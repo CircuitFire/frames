@@ -2,18 +2,13 @@
 use frames::*;
 use frame_types::*;
 use crossterm::ExecutableCommand;
-use crossterm::event::{poll, read};
+use crossterm::event::{poll, read, Event};
 use crossterm::terminal;
 use std::io;
 use std::{thread, time};
 
 fn main() {
     io::stdout().execute(terminal::SetTitle("Frames Demo!")).unwrap();
-
-    let size = {
-        let (x, y) = crossterm::terminal::size().unwrap();
-        Coord { x: x as i32, y: y as i32 }
-    };
 
     let background_data = {
         let s = Pixel::new('*', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
@@ -78,39 +73,28 @@ fn main() {
         Mask::new(Fill::new(b), Pixel::Clear, mask_rules::Circle::new(), false)
     };
 
-    let mut manager = frames::Manager::new().unwrap();
+    let mut manager = Manager::new().unwrap();
 
-    let background = Object::new_from_default(Object::default(background_data.clone(), Coord {x: 0, y: 0}, size));
+    let background = Object::new_basic(background_data.clone(), manager.get_size());
+    background.borrow_mut().set_size_update_fn(Some(Box::new(BackGroundUpdate{})));
 
-    let planet = Object::new_from_default(Object::default(planet_data.clone(), Coord {x: 0, y: 0}, Coord {x: 21, y: 21}));
-    planet.borrow_mut().set_center(&planet_pos(&size));
+    let planet = Object::new_basic(planet_data.clone(), Coord{x: 21, y: 21});
+    planet.borrow_mut().set_size_update_fn(Some(Box::new(PlanetUpdate{})));
 
-    let moon = Object::new_from_default(Object::default(moon_data.clone(),Coord {x: 0, y: 0}, Coord {x: 7, y: 7}));
-    moon.borrow_mut().set_center(&(planet.borrow().get_pos() + Coord{x: 25, y: -5}));
+    let moon = Object::new_basic(moon_data.clone(), Coord{x: 10, y: 10});
+    moon.borrow_mut().set_size_update_fn(Some(Box::new(MoonUpdate{planet: planet.clone()})));
 
-    manager.objects().push(background.clone());
-    manager.objects().push(planet.clone());
-    manager.objects().push(moon.clone());
+    manager.objects.push(background.clone());
+    manager.objects.push(planet.clone());
+    manager.objects.push(moon.clone());
     
+    manager.add_task(Task::UpdateAll);
 
-    manager.add_task(frames::Task::UpdateAll);
-
-    let mut prev_size_update = 0;
-    
     loop {
-        while poll(time::Duration::from_millis(0)).unwrap() { read().unwrap(); }
-
-        if prev_size_update != 0 {
-            manager.add_task(frames::Task::UpdateAll);
-            prev_size_update -= 1;
-        }
-
-        if manager.match_size().unwrap() {
-            let size = manager.get_size();
-            background.borrow_mut().set_size(&size);
-            planet.borrow_mut().set_center(&planet_pos(&size));
-            moon.borrow_mut().set_center(&(planet.borrow().get_pos() + Coord{x: 25, y: -5}));
-            prev_size_update = 3;
+        while poll(time::Duration::from_millis(1)).unwrap() {
+            if let Event::Resize(x, y) = read().unwrap() {
+                manager.resize(x, y);
+            }
         }
 
         planet.borrow_mut().inc_offset(&Coord{ x: 1, y: 0 });
@@ -122,11 +106,30 @@ fn main() {
     }
 }
 
-fn planet_pos(screen_size: &Coord) -> Coord {
-    let mut new = *screen_size;
+struct PlanetUpdate {}
 
-    new.x = new.x / 6; 
-    new.y = (new.y / 5) * 3;
+impl SizeUpdate for PlanetUpdate {
+    fn size_update(&mut self, new_size: &Coord, current_pos: &mut Coord, current_size: &mut Coord, _enabled: &mut bool){
+        let temp = Coord{x: (new_size.x / 6), y: ((new_size.y / 5) * 3)};
+        *current_pos = temp - (*current_size / Coord{ x: 2, y: 2 });
+    }
+}
 
-    new
+struct MoonUpdate {
+    planet: Rc<RefCell<Object>>,
+}
+
+impl SizeUpdate for MoonUpdate {
+    fn size_update(&mut self, _new_size: &Coord, current_pos: &mut Coord, current_size: &mut Coord, _enabled: &mut bool){
+        let temp = self.planet.borrow().pos + Coord{x: 25, y: -5};
+        *current_pos = temp - (*current_size / Coord{ x: 2, y: 2 });
+    }
+}
+
+struct BackGroundUpdate {}
+
+impl SizeUpdate for BackGroundUpdate {
+    fn size_update(&mut self, new_size: &Coord, _current_pos: &mut Coord, current_size: &mut Coord, _enabled: &mut bool){
+        *current_size = *new_size;
+    }
 }

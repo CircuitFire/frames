@@ -11,7 +11,6 @@ use std::collections::VecDeque;
 /// - add_entry
 /// - add_entry_color
 /// - entries_len
-/// - entries_max
 /// - set_entry_text
 /// - get_entry_text
 /// - append_entry
@@ -24,8 +23,8 @@ use std::collections::VecDeque;
 /// - remove_entry
 /// - clear_entries
 pub struct Text {
-    max: Option<usize>,
-    fill: PixelData,
+    pub max: Option<usize>,
+    pub fill: PixelData,
     entries: VecDeque<Entry>,
 }
 
@@ -87,10 +86,6 @@ impl Text {
         self.entries.len()
     }
 
-    pub fn entries_max(&self) -> Option<usize> {
-        self.max
-    }
-
     pub fn set_entry_text(&mut self, index: usize, text: String) {
         self.entries[index].set_text(text);
     }
@@ -139,14 +134,6 @@ impl Text {
 
     pub fn clear_entries(&mut self) {
         self.entries.clear();
-    }
-
-    pub fn set_fill(&mut self, fill: PixelData) {
-        self.fill = fill;
-    }
-
-    pub fn set_max(&mut self, max: Option<usize>) {
-        self.max = max;
     }
 }
 

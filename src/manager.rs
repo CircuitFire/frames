@@ -17,17 +17,19 @@ use crossterm::{ExecutableCommand, QueueableCommand, execute,
 /// The frame Manager holds on to all of the data necessary for drawing frames into the terminal
 /// ## Functions
 /// - new
+/// - new_fill
 /// 
 /// ## Methods
 /// - set_size
 /// - match_size
+/// - resize
 /// - get_size
 /// - kill
 /// - objects
 /// - add_task
 /// - draw
 pub struct Manager {
-    objects: Vec<Rc<RefCell<Object>>>,
+    pub objects: Vec<Rc<RefCell<Object>>>,
     tasks: Vec<Task>,
     size: Coord,
     fill: Fill,
@@ -42,7 +44,7 @@ impl Manager {
             EnterAlternateScreen,
             cursor::Hide,
             cursor::DisableBlinking,
-        );
+        )?;
 
         Ok(Manager {
             objects: Vec::new(),
@@ -63,22 +65,25 @@ impl Manager {
     }
 
     /// Changes the size of the screen to the new size, and refreshes the screen on next draw.
-    pub fn set_size(&mut self, size: &Coord) {
-        self.size = *size;
+    pub fn set_size(&mut self, size: Coord) {
+        self.size = size;
+
+        for obj in &self.objects {
+            obj.borrow_mut().size_update(&self.size);
+        }
+
         self.add_task(Task::UpdateAll);
     }
 
     /// Checks if the screen size has changed and if it has sets it to the new size and returns true, else false.
-    pub fn match_size(&mut self) -> Result<bool, ErrorKind>{
-        let size = screen_size()?;
+    pub fn match_size(&mut self) -> Result<(), ErrorKind>{
+        self.set_size(screen_size()?);
+        Ok(())
+    }
 
-        if self.size != size {
-            self.set_size(&size);
-            Ok(true)
-        }
-        else {
-            Ok(false)
-        }
+    /// Sets the size based on the output of crossterm Resize event.
+    pub fn resize(&mut self, x: u16, y: u16){
+        self.set_size(Coord{x: (x as i32) + 1, y: (y as i32) + 1});
     }
 
     /// Gets the current manager size
@@ -86,15 +91,10 @@ impl Manager {
         self.size
     }
 
-    /// returns to the orginal teminal screen.
+    /// returns to the original terminal screen.
     pub fn kill(&mut self) -> Result<(), ErrorKind> {
         stdout().execute(LeaveAlternateScreen)?;
         Ok(())
-    }
-
-    //returns a mut refrence to the list of objects.
-    pub fn objects(&mut self) -> &mut Vec<Rc<RefCell<Object>>>{
-        &mut self.objects
     }
 
     //adds the areas specified by the task to be updated next draw.
@@ -118,7 +118,7 @@ impl Manager {
         }
     }
 
-    /// Makes a list of all rectangular areas that have requsted to be updated.
+    /// Makes a list of all rectangular areas that have requested to be updated.
     fn make_rec_list(&mut self) -> Vec<Rec> {
         let mut reclist: Vec<Rec> = Vec::with_capacity(self.tasks.len());
         let range = Rec{ start: Coord {x: 0, y: 0}, end: self.size};
@@ -164,7 +164,7 @@ impl Manager {
             while (i < recs.len()) && (recs[i].start.y == cur_y) {
 
                 //try to pull a drawsegment of the top of the rec.
-                //if the rec has no volume it is droped from the list
+                //if the rec has no volume it is dropped from the list
                 match recs[i].pull_drawseg() {
                     None => {
                         recs.remove(i);
@@ -191,7 +191,7 @@ impl Manager {
         //let mut i = 0;
         for object in objects {
             let borrowed = object.borrow();
-            if borrowed.is_enabled() { borrowed.get_draw_data(&mut drawsegs); }
+            if borrowed.enabled { borrowed.get_draw_data(&mut drawsegs); }
             //i += 1;
         }
  
@@ -203,13 +203,13 @@ impl Manager {
 }
 
 trait TerminalOut {
-    fn write_pixle(&mut self, pixle: &PixelData, last_colors: &mut [Option<Color>; 2]) -> Result<(), ErrorKind>;
+    fn write_pixel(&mut self, pixle: &PixelData, last_colors: &mut [Option<Color>; 2]) -> Result<(), ErrorKind>;
 
     fn write_datasegments(&mut self, segments: Vec<DrawData>) -> Result<(), ErrorKind>;
 }
 
 impl TerminalOut for std::io::Stdout {
-    fn write_pixle(&mut self, pixle: &PixelData, last_colors: &mut [Option<Color>; 2]) -> Result<(), ErrorKind> {
+    fn write_pixel(&mut self, pixle: &PixelData, last_colors: &mut [Option<Color>; 2]) -> Result<(), ErrorKind> {
 
         if !same_color(&pixle.fg, &last_colors[0]) {
             self.queue(SetForegroundColor(pixle.fg))?;
@@ -232,7 +232,7 @@ impl TerminalOut for std::io::Stdout {
                     Pixel::Clear => { self.queue(cursor::MoveRight(1))?; }
 
                     Pixel::Opaque(data) => {
-                        self.write_pixle(&data, &mut last_colors)?;
+                        self.write_pixel(&data, &mut last_colors)?;
                         last_colors[0] = Some(data.fg);
                         last_colors[1] = Some(data.bg);
                     }
@@ -258,7 +258,7 @@ fn same_color(new: &Color, old: &Option<Color>) -> bool {
 fn screen_size() -> Result<Coord, ErrorKind> {
     let (x, y) = crossterm::terminal::size()?;
     Ok(Coord{
-        x: x as i32,
-        y: y as i32,
+        x: (x as i32) + 1,
+        y: (y as i32) + 1,
     })
 }

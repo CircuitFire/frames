@@ -12,10 +12,10 @@ use crate::mask_rules::*;
 /// - set_invert
 /// - toggle_invert
 pub struct Mask {
-    frame: Rc<RefCell<dyn Frame>>,
-    pixel: Pixel,
-    rule: Box<dyn MaskRule>,
-    invert: bool,
+    pub frame: Rc<RefCell<dyn Frame>>,
+    pub pixel: Pixel,
+    pub rule: Box<dyn MaskRule>,
+    pub invert: bool,
 }
 
 impl Frame for Mask {
@@ -51,22 +51,6 @@ impl Mask {
                 invert: invert_rule,
             }
         ))
-    }
-
-    pub fn set_frame(&mut self, frame: Rc<RefCell<dyn Frame>>) {
-        self.frame = frame;
-    }
-
-    pub fn set_pixel(&mut self, pixel: &Pixel) {
-        self.pixel = *pixel;
-    }
-
-    pub fn set_rule(&mut self, rule: Box<dyn MaskRule>) {
-        self.rule = rule;
-    }
-
-    pub fn set_invert(&mut self, invert_rule: bool) {
-        self.invert = invert_rule;
     }
 
     pub fn toggle_invert(&mut self) {

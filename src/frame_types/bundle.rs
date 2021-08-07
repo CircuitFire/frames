@@ -9,8 +9,8 @@ use crate::shared::*;
 /// - set_index
 /// - inc_index
 pub struct Bundle {
-    frames: Vec<Rc<RefCell<dyn Frame>>>,
-    index: usize,
+    pub frames: Vec<Rc<RefCell<dyn Frame>>>,
+    pub index: usize,
 }
 
 impl Frame for Bundle {
@@ -31,14 +31,6 @@ impl Bundle {
                 index: 0,
             }
         ))
-    }
-
-    pub fn frames(&mut self) -> &mut Vec<Rc<RefCell<dyn Frame>>> {
-        &mut self.frames
-    }
-
-    pub fn set_index(&mut self, new: usize) {
-        self.index = new;
     }
 
     pub fn inc_index(&mut self, mut inc: i32) {

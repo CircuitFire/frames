@@ -9,7 +9,7 @@ use crate::shared::*;
 /// - set_pixel
 /// - get_pixel
 pub struct Fill {
-    pixel: Pixel,
+    pub pixel: Pixel,
 }
 
 impl Frame for Fill {
@@ -46,13 +46,5 @@ impl Fill {
         Fill {
             pixel: pixel,
         }
-    }
-
-    pub fn set_pixel(&mut self, pixle: Pixel) {
-        self.pixel = pixle;
-    }
-
-    pub fn get_pixel(&self) -> Pixel {
-        self.pixel
     }
 }

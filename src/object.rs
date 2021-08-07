@@ -1,5 +1,9 @@
 use crate::shared::*;
 
+pub trait SizeUpdate{
+    fn size_update(&mut self, new_size: &Coord, current_pos: &mut Coord, current_size: &mut Coord, enabled: &mut bool);
+}
+
 /// An Object holds a reference to a frame and all of the positional data for how it is drawn onto the screen.
 /// ## Functions
 /// - new
@@ -7,13 +11,6 @@ use crate::shared::*;
 /// - new_min
 /// 
 /// ## Methods
-/// - set_enabled
-/// - set_pos
-/// - set_center
-/// - set_size
-/// - set_offset
-/// - set_yflip
-/// - set_xflip
 /// - rot_cw
 /// - rot_ccw
 /// - rot_180
@@ -22,39 +19,20 @@ use crate::shared::*;
 /// - set_frame_rc
 /// - inc_offset
 /// - is_enabled
-/// - get_pos
-/// - get_size
-/// - get_offset
-/// - get_center
-/// - get_rot
-/// - get_xflip
-/// - get_yflip
+/// - update_size
 pub struct Object {
-    frame: Rc<RefCell<dyn Frame>>,
-    pos: Coord,
-    size: Coord,
-    offset: Coord,
-    rot: bool,
-    yflip: bool,
-    xflip: bool,
-    enabled: bool,
+    pub frame: Rc<RefCell<dyn Frame>>,
+    pub pos: Coord,
+    pub size: Coord,
+    pub offset: Coord,
+    pub rot: bool,
+    pub yflip: bool,
+    pub xflip: bool,
+    pub enabled: bool,
+    pub size_update_fn: Option<Box<dyn SizeUpdate>>,
 }
 
 impl Object {
-    /// Creates creates an Object with all unspecified felids set to defaults. To be used with new_from_default() and struct update syntax.
-    pub fn default(frame: Rc<RefCell<dyn Frame>>, pos: Coord, size: Coord) -> Self {
-        Object {
-            frame: frame,
-            pos: pos,
-            size: size,
-            offset: Coord {x:0, y:0},
-            rot: false,
-            yflip: false,
-            xflip: false,
-            enabled: true,
-        }
-    }
-
     /// Create a new Object manually setting each of the properties.
     pub fn new(frame: Rc<RefCell<dyn Frame>>, pos: Coord, size: Coord, offset: Coord, rot: bool, yflip: bool, xflip: bool, enabled: bool) -> Rc<RefCell<Self>> {
         Rc::new(RefCell::new(
@@ -67,13 +45,26 @@ impl Object {
                 yflip: yflip,
                 xflip: xflip,
                 enabled: enabled,
+                size_update_fn: None,
             }
         ))
     }
 
     /// Create a new Object with the default orientation.
-    pub fn new_from_default(default: Object) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(default))
+    pub fn new_basic(frame: Rc<RefCell<dyn Frame>>, size: Coord) -> Rc<RefCell<Self>> {
+        Rc::new(RefCell::new(
+            Object {
+                frame: frame,
+                pos: Coord{x: 0, y: 0},
+                size: size,
+                offset: Coord{x: 0, y: 0},
+                rot: false,
+                yflip: false,
+                xflip: false,
+                enabled: true,
+                size_update_fn: None,
+            }
+     ))
     }
 
     /// Create a new Object with the default orientation and matching the size of the given frame.
@@ -90,49 +81,21 @@ impl Object {
         }
     }
 
-    /// Sets if the object is enabled to the provided bool.
-    pub fn set_enabled(&mut self, enabled: bool) {
-        self.enabled = enabled;
+    /// Set the function that is used to update the objects position size and if its enabled when the screen size is updated.
+    pub fn set_size_update_fn(&mut self, func: Option<Box<dyn SizeUpdate>>) {
+        self.size_update_fn = func;
     }
 
-    /// Gets the Objects enabled value.
-    pub fn is_enabled(&self) -> bool {
-        self.enabled
-    }
-
-    /// Sets the Objects position to the provided coord.
-    pub fn set_pos(&mut self, new: &Coord) {
-        self.pos = *new;
+    /// Gets called by the manager every time the the screen size is updated.
+    pub fn size_update(&mut self, new_size: &Coord){
+        if let Some(func) = &mut self.size_update_fn {
+            func.size_update(new_size, &mut self.pos, &mut self.size, &mut self.enabled);
+        }
     }
 
     /// Sets the Objects Center position of the object to the provided coord.
-    pub fn set_center(&mut self, new: &Coord) {
-        self.pos = *new - (self.size / Coord{ x: 2, y: 2 });
-    }
-
-    /// Sets the Objects size to the provided coord.
-    pub fn set_size(&mut self, new: &Coord) {
-        self.size = *new;
-    }
-
-    /// Sets the Objects offset to the provided coord.
-    pub fn set_offset(&mut self, new: &Coord) {
-        self.offset = *new;
-    }
-
-    /// Sets whether the Object rotates it frame by 90 degrees.
-    pub fn set_rot(&mut self, new: bool) {
-        self.rot = new;
-    }
-
-    /// Sets whether the Object flips it frame over the Y axis.
-    pub fn set_yflip(&mut self, new: bool) {
-        self.yflip = new;
-    }
-
-    /// Sets whether the Object flips it frame over the X axis.
-    pub fn set_xflip(&mut self, new: bool) {
-        self.xflip = new;
+    pub fn set_center(&mut self, new: Coord) {
+        self.pos = new - (self.size / Coord{ x: 2, y: 2 });
     }
 
     /// Flips the frame over the x axis.
@@ -167,61 +130,16 @@ impl Object {
         }
     }
 
-    /// returns a reference to the held frame.
-    pub fn get_frame(&self) -> &Rc<RefCell<dyn Frame>> {
-        &self.frame
-    }
-
     /// Sets the Objects frame using an object.
     pub fn set_frame_struct<T: Frame + 'static>(&mut self, frame: T) -> &Rc<RefCell<dyn Frame>> {
         self.frame = Rc::new(RefCell::new(frame));
         &self.frame
     }
 
-    /// Sets the Objects frame using a reference.
-    pub fn set_frame_rc(&mut self, frame: Rc<RefCell<dyn Frame>>) {
-        self.frame = frame;
-    }
-
     /// Increments the offset of the frame by the given amount.
     pub fn inc_offset(&mut self, inc: &Coord) {
         self.offset += *inc;
         self.offset %= self.size * Coord{ x: 2, y: 2 };
-    }
-
-    /// Returns the current position of the object.
-    pub fn get_pos(&self) -> Coord {
-        self.pos
-    }
-
-    /// Returns the current size of the object.
-    pub fn get_size(&self) -> Coord {
-        self.size
-    }
-
-    /// Returns the current offset of the frame.
-    pub fn get_offset(&self) -> Coord {
-        self.offset
-    }
-
-    /// Returns the current position of the center of the object.
-    pub fn get_center(&self) -> Coord {
-        self.pos + (self.size / Coord{ x: 2, y: 2 })
-    }
-
-    /// Returns if the frame is currently rotated 90 degrees.
-    pub fn get_rot(&self) -> bool {
-        self.rot
-    }
-
-    /// Returns if the frame is currently flipped over the X axis.
-    pub fn get_xflip(&self) -> bool {
-        self.xflip
-    }
-
-    /// Returns if the frame is currently flipped over the Y axis.
-    pub fn get_yflip(&self) -> bool {
-        self.yflip
     }
 
     /// Offsets and flips the local drawsegs depending on the objects orientation before being fed into the local frame.
@@ -339,9 +257,9 @@ impl Object {
     }
 
     /// Outputs a update task for the frame manager containing the areas of the objects old and new position.
-    pub fn move_to(&mut self, newpos: &Coord) -> Task {
+    pub fn move_to(&mut self, newpos: Coord) -> Task {
         let old_rec = self.get_rec();
-        self.pos = *newpos;
+        self.pos = newpos;
 
         //println!("old: {:?}\n\nnew:{:?}", old_rec, self.get_rec());
         Task::UpdateMult(
