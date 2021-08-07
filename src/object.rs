@@ -9,6 +9,7 @@ pub trait SizeUpdate{
 /// - new
 /// - new_basic
 /// - new_min
+/// - new_frame_size
 /// 
 /// ## Methods
 /// - rot_cw
@@ -52,29 +53,21 @@ impl Object {
 
     /// Create a new Object with the default orientation.
     pub fn new_basic(frame: Rc<RefCell<dyn Frame>>, size: Coord) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(
-            Object {
-                frame: frame,
-                pos: Coord{x: 0, y: 0},
-                size: size,
-                offset: Coord{x: 0, y: 0},
-                rot: false,
-                yflip: false,
-                xflip: false,
-                enabled: true,
-                size_update_fn: None,
-            }
-     ))
+        Object::new(frame, Coord{x:0, y:0}, size, Coord{x:0, y:0}, false, false, false, true)
+    }
+
+    /// Create a new Object with the default orientation.
+    pub fn new_min(frame: Rc<RefCell<dyn Frame>>) -> Rc<RefCell<Self>> {
+        Object::new(frame, Coord{x:0, y:0}, Coord{x:0, y:0}, Coord{x:0, y:0}, false, false, false, true)
     }
 
     /// Create a new Object with the default orientation and matching the size of the given frame.
-    /// 
     /// Some frames don't have normal sizes like Fill and Text.
-    pub fn new_min(frame: Rc<RefCell<dyn Frame>>, pos: Coord) -> Option<Rc<RefCell<Self>>> {
+    pub fn new_frame_sized(frame: Rc<RefCell<dyn Frame>>) -> Option<Rc<RefCell<Self>>> {
         let size = frame.borrow().size();
         
         if let Some(size) = size {
-            Some(Object::new(frame, pos, size, Coord {x:0, y:0}, false, false, false, true))
+            Some(Object::new(frame, Coord{x:0, y:0}, size, Coord{x:0, y:0}, false, false, false, true))
         }
         else{
             None
