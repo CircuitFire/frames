@@ -1,7 +1,7 @@
 use crate::shared::*;
 
 pub trait SizeUpdate{
-    fn size_update(&mut self, new_size: &Coord, current_pos: &mut Coord, current_size: &mut Coord, enabled: &mut bool);
+    fn size_update(&mut self, new_size: &Coord, pos: &mut Coord, size: &mut Coord, offset: &mut Coord, enabled: &mut bool);
 }
 
 /// An Object holds a reference to a frame and all of the positional data for how it is drawn onto the screen.
@@ -77,7 +77,7 @@ impl Object {
     /// Gets called by the manager every time the the screen size is updated.
     pub fn size_update(&mut self, new_size: &Coord){
         if let Some(func) = &mut self.size_update {
-            func.size_update(new_size, &mut self.pos, &mut self.size, &mut self.enabled);
+            func.size_update(new_size, &mut self.pos, &mut self.size, &mut self.offset, &mut self.enabled);
         }
     }
 

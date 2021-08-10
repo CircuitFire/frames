@@ -109,9 +109,9 @@ fn main() {
 struct PlanetUpdate {}
 
 impl SizeUpdate for PlanetUpdate {
-    fn size_update(&mut self, new_size: &Coord, current_pos: &mut Coord, current_size: &mut Coord, _enabled: &mut bool){
+    fn size_update(&mut self, new_size: &Coord, pos: &mut Coord, size: &mut Coord, _offset: &mut Coord, _enabled: &mut bool){
         let temp = Coord{x: (new_size.x / 6), y: ((new_size.y / 5) * 3)};
-        *current_pos = temp - (*current_size / Coord{ x: 2, y: 2 });
+        *pos = temp - (*size / Coord{ x: 2, y: 2 });
     }
 }
 
@@ -120,16 +120,16 @@ struct MoonUpdate {
 }
 
 impl SizeUpdate for MoonUpdate {
-    fn size_update(&mut self, _new_size: &Coord, current_pos: &mut Coord, current_size: &mut Coord, _enabled: &mut bool){
+    fn size_update(&mut self, _new_size: &Coord, pos: &mut Coord, size: &mut Coord, _offset: &mut Coord, _enabled: &mut bool){
         let temp = self.planet.borrow().pos + Coord{x: 25, y: -5};
-        *current_pos = temp - (*current_size / Coord{ x: 2, y: 2 });
+        *pos = temp - (*size / Coord{ x: 2, y: 2 });
     }
 }
 
 struct BackGroundUpdate {}
 
 impl SizeUpdate for BackGroundUpdate {
-    fn size_update(&mut self, new_size: &Coord, _current_pos: &mut Coord, current_size: &mut Coord, _enabled: &mut bool){
-        *current_size = *new_size;
+    fn size_update(&mut self, new_size: &Coord, _pos: &mut Coord, size: &mut Coord, _offset: &mut Coord, _enabled: &mut bool){
+        *size = *new_size;
     }
 }
