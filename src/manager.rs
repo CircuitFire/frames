@@ -8,8 +8,7 @@ use std::{
     io::{stdout, Write},
 };
 
-use crossterm::{ExecutableCommand, QueueableCommand, execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen},
+use crossterm::{QueueableCommand,
     style::{Print, SetForegroundColor, SetBackgroundColor},
     cursor, ErrorKind
 };
@@ -20,6 +19,8 @@ use crossterm::{ExecutableCommand, QueueableCommand, execute,
 /// - new_fill
 /// 
 /// ## Methods
+/// - set_fill
+/// - update_objects
 /// - set_size
 /// - match_size
 /// - resize
@@ -39,13 +40,6 @@ impl Manager {
     /// Returns a new frame manager, enters a new terminal screen, and is set to update the whole screen on first draw.
     /// - fill = the default character printed when no other data is present.
     pub fn new_fill(fill: Pixel) -> Result<Manager, ErrorKind> {
-        execute!(
-            stdout(),
-            EnterAlternateScreen,
-            cursor::Hide,
-            cursor::DisableBlinking,
-        )?;
-
         Ok(Manager {
             objects: Vec::new(),
             tasks: vec![Task::UpdateAll],
@@ -64,13 +58,18 @@ impl Manager {
         self.fill = Fill::new_struct(fill);
     }
 
+    /// calls the update functions of all contained objects.
+    pub fn update_objects(&mut self){
+        for obj in &self.objects {
+            obj.borrow_mut().size_update(&self.size);
+        }
+    }
+
     /// Changes the size of the screen to the new size, and refreshes the screen on next draw.
     pub fn set_size(&mut self, size: Coord) {
         self.size = size;
 
-        for obj in &self.objects {
-            obj.borrow_mut().size_update(&self.size);
-        }
+        self.update_objects();
 
         self.add_task(Task::UpdateAll);
     }
@@ -89,12 +88,6 @@ impl Manager {
     /// Gets the current manager size
     pub fn get_size(&self) -> Coord {
         self.size
-    }
-
-    /// returns to the original terminal screen.
-    pub fn kill(&mut self) -> Result<(), ErrorKind> {
-        stdout().execute(LeaveAlternateScreen)?;
-        Ok(())
     }
 
     //adds the areas specified by the task to be updated next draw.

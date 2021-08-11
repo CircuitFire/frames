@@ -3,7 +3,7 @@ use frames::*;
 use frame_types::*;
 use crossterm::ExecutableCommand;
 use crossterm::event::{poll, read, Event};
-use crossterm::terminal;
+use crossterm::terminal::{self, EnterAlternateScreen};
 use std::io;
 use std::{thread, time};
 
@@ -90,6 +90,8 @@ fn main() {
     
     manager.add_task(Task::UpdateAll);
 
+    io::stdout().execute(EnterAlternateScreen).unwrap();
+
     loop {
         while poll(time::Duration::from_millis(1)).unwrap() {
             if let Event::Resize(x, y) = read().unwrap() {
@@ -104,6 +106,8 @@ fn main() {
 
         thread::sleep(time::Duration::from_millis(100));
     }
+
+    //io::stdout().execute(LeaveAlternateScreen).unwrap();
 }
 
 struct PlanetUpdate {}
