@@ -1,3 +1,6 @@
+const SCREEN_OFFSET: i32 = if cfg!(windows){ 1 }
+else { 0 };
+
 use crate::{
     shared::*,
     object::*,
@@ -82,7 +85,7 @@ impl Manager {
 
     /// Sets the size based on the output of crossterm Resize event.
     pub fn resize(&mut self, x: u16, y: u16){
-        self.set_size(Coord{x: (x as i32) + 1, y: (y as i32) + 1});
+        self.set_size(Coord{x: (x as i32) + SCREEN_OFFSET, y: (y as i32) + SCREEN_OFFSET});
     }
 
     /// Gets the current manager size
@@ -251,7 +254,7 @@ fn same_color(new: &Color, old: &Option<Color>) -> bool {
 fn screen_size() -> Result<Coord, ErrorKind> {
     let (x, y) = crossterm::terminal::size()?;
     Ok(Coord{
-        x: (x as i32) + 1,
-        y: (y as i32) + 1,
+        x: (x as i32) + SCREEN_OFFSET,
+        y: (y as i32) + SCREEN_OFFSET,
     })
 }
