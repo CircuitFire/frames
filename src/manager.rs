@@ -1,5 +1,5 @@
 const SCREEN_OFFSET: i32 = if cfg!(windows){ 1 }
-else { -2 };
+else { 0 };
 
 use crate::{
     shared::*,
