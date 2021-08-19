@@ -8,20 +8,21 @@ use std::collections::VecDeque;
 /// - new_sized
 /// 
 /// ## Methods
-/// - add_entry
-/// - add_entry_color
-/// - entries_len
-/// - set_entry_text
-/// - get_entry_text
+/// - push
+/// - push_color
+/// - len
+/// - set_text
+/// - get_text
 /// - append_entry
-/// - set_entry_fg
-/// - get_entry_fg
-/// - set_entry_bg
-/// - get_entry_bg
-/// - insert_entry
-/// - insert_entry_color
-/// - remove_entry
-/// - clear_entries
+/// - set_fg
+/// - get_fg
+/// - set_bg
+/// - get_bg
+/// - insert
+/// - insert_color
+/// - remove
+/// - clear
+/// - truncate
 pub struct Text {
     pub max: Option<usize>,
     pub fill: PixelData,
@@ -68,11 +69,11 @@ impl Text {
         ))
     }
 
-    pub fn add_entry(&mut self, text: String) {
-        self.add_entry_color(text, self.fill.fg, self.fill.bg);
+    pub fn push(&mut self, text: String) {
+        self.push_color(text, self.fill.fg, self.fill.bg);
     }
 
-    pub fn add_entry_color(&mut self, text: String, fg: Color, bg: Color) {
+    pub fn push_color(&mut self, text: String, fg: Color, bg: Color) {
         let entry = Entry::new(text, fg, bg);
 
         if let Some(size) = self.max {
@@ -82,15 +83,15 @@ impl Text {
         self.entries.push_back(entry);
     }
 
-    pub fn entries_len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.entries.len()
     }
 
-    pub fn set_entry_text(&mut self, index: usize, text: String) {
+    pub fn set_text(&mut self, index: usize, text: String) {
         self.entries[index].set_text(text);
     }
 
-    pub fn get_entry_text(&self, index: usize) -> &str {
+    pub fn get_text(&self, index: usize) -> &str {
         &self.entries[index].text
     }
 
@@ -98,27 +99,27 @@ impl Text {
         self.entries[index].append(text);
     }
 
-    pub fn set_entry_fg(&mut self, index: usize, color: Color) {
+    pub fn set_fg(&mut self, index: usize, color: Color) {
         self.entries[index].fg = color;
     }
 
-    pub fn get_entry_fg(&self, index: usize) -> Color {
+    pub fn get_fg(&self, index: usize) -> Color {
         self.entries[index].fg
     }
 
-    pub fn set_entry_bg(&mut self, index: usize, color: Color) {
+    pub fn set_bg(&mut self, index: usize, color: Color) {
         self.entries[index].bg = color;
     }
 
-    pub fn get_entry_bg(&self, index: usize) -> Color {
+    pub fn get_bg(&self, index: usize) -> Color {
         self.entries[index].bg
     }
 
-    pub fn insert_entry(&mut self, index: usize, text: String) {
-        self.insert_entry_color(index, text, self.fill.fg, self.fill.bg);
+    pub fn insert(&mut self, index: usize, text: String) {
+        self.insert_color(index, text, self.fill.fg, self.fill.bg);
     }
 
-    pub fn insert_entry_color(&mut self, index: usize, text: String, fg: Color, bg: Color) {
+    pub fn insert_color(&mut self, index: usize, text: String, fg: Color, bg: Color) {
         let entry = Entry::new(text, fg, bg);
 
         if let Some(size) = self.max {
@@ -128,11 +129,11 @@ impl Text {
         self.entries.insert(index, entry);
     }
 
-    pub fn remove_entry(&mut self, index: usize) {
+    pub fn remove(&mut self, index: usize) {
         self.entries.remove(index);
     }
 
-    pub fn clear_entries(&mut self) {
+    pub fn clear(&mut self) {
         self.entries.clear();
     }
 
@@ -141,7 +142,7 @@ impl Text {
     }
 }
 
-pub struct Entry {
+struct Entry {
     text: String,
     fg: Color,
     bg: Color,
