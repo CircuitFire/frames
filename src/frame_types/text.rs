@@ -135,9 +135,13 @@ impl Text {
     pub fn clear_entries(&mut self) {
         self.entries.clear();
     }
+
+    pub fn truncate(&mut self, len: usize) {
+        self.entries.truncate(len);
+    }
 }
 
-struct Entry {
+pub struct Entry {
     text: String,
     fg: Color,
     bg: Color,
