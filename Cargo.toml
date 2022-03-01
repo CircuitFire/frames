@@ -9,3 +9,7 @@ edition = "2018"
 [dependencies]
 crossterm = "0.20"
 coord = {git = "https://github.com/CircuitFire/coord.git"}
+
+[features]
+default = []
+serde = ["crossterm/serde"]
