@@ -1,4 +1,13 @@
-use crate::shared::*;
+use crate::prelude::*;
+
+pub type Basic = Rc<RefCell<IBasic>>;
+
+pub fn new(size: Coord, pixels: Vec<Pixel>) -> Result<Basic, &'static str> {
+    match IBasic::new(size, pixels) {
+        Ok(x) => Ok(Rc::new(RefCell::new(x))),
+        Err(x) => Err(x),
+    }
+}
 
 /// The most basic frame consisting of a vec of pixels and a size
 /// ## Functions
@@ -9,53 +18,31 @@ use crate::shared::*;
 /// - get_pixel
 /// - get_pixels
 /// - set_pixel
-pub struct Basic {
+pub struct IBasic {
     size: Coord,
     pixels: Vec<Pixel>,
 }
 
-impl Frame for Basic {
+impl IFrame for IBasic {
+    fn get_draw_data(&self, screenbuf: &mut ScreenBuf, offset: Coord, _: Coord) {
 
-    fn size(&self) -> Option<Coord> {
-        Some(self.size)
-    }
-
-    fn get_draw_data(&self, area: &Vec<Drawsegment>, offset: Coord, _: Coord) -> Vec<DrawData> {
-
-        let mut datasegments: Vec<DrawData> = Vec::with_capacity(area.len());
-        
-        for segment in area {
-            let mut draw_data = DrawData::from_drawsemgnet(segment);
-
-            //println!("seg:\nstart: {:?}, end: {}", segment.start, segment.end);
-            for x in segment.start.x..segment.end_pos() {
-                let pos = Coord {y: segment.start.y, x: x};
-                //println!("position: {}", self.flat_pos(&((pos + offset) % self.size)));
-                draw_data.data.push(
-                    self.get_pixel(&(pos + offset))
-                )
-            }
-
-            datasegments.push(draw_data);
+        for pos in screenbuf.draw_to() {
+            screenbuf.set(pos, self.get_pixel(&(pos + offset)));
         }
-
-        datasegments
     }
 }
 
-impl Basic {
-    pub fn new(size: Coord, pixels: Vec<Pixel>) -> Result<Rc<RefCell<Basic>>, &'static str> {
+impl IBasic {
+    pub fn new(size: Coord, pixels: Vec<Pixel>) -> Result<Self, &'static str> {
         if (size.x * size.y) != pixels.len() as i32 {
             Err("size != number of pixels.")
         }
         else {
             Ok(
-                Rc::new(RefCell::new(
-                    Basic {
-                        size: size,
-                        pixels: pixels,
-                    }
-                ))
+                Self {
+                    size: size,
+                    pixels: pixels,
+                }
             )
         }
     }
@@ -65,7 +52,7 @@ impl Basic {
             Err("size != number of pixels.")
         }
         else {
-            *self = Basic {
+            *self = Self {
                 size: size,
                 pixels: pixels,
             };
@@ -75,7 +62,6 @@ impl Basic {
 
     pub fn get_pixel(&self, coord: &Coord) -> Pixel {
         let new_coord = *coord % self.size;
-        //println!("old: {:?}, new: {:?}", coord, new_coord);
         self.pixels[self.flat_pos(&new_coord)]
     }
 

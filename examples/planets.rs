@@ -1,20 +1,26 @@
-
 use frames::*;
 use frame_types::*;
-use crossterm::ExecutableCommand;
-use crossterm::event::{poll, read, Event};
-use crossterm::terminal::{self, EnterAlternateScreen};
+use layout::Object;
+use modifiers::*;
+use position::update_types::*;
+use prelude::*;
+
 use std::io;
-use std::{thread, time};
+use std::time;
+
+use crossterm::ExecutableCommand;
+use crossterm::terminal;
+
+use Color::Rgb;
 
 fn main() {
     io::stdout().execute(terminal::SetTitle("Frames Demo!")).unwrap();
 
     let background_data = {
-        let s = Pixel::new('*', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
-        let b = Pixel::new('.', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
-        let x = Pixel::new('x', Color::Rgb{r: 255, g: 255, b: 255}, Color::Rgb{r: 0, g: 0, b: 0});
-        let n = Pixel::Clear;
+        let s = Pixel::new('*', Rgb{r: 255, g: 255, b: 255}, Rgb{r: 0, g: 0, b: 0});
+        let b = Pixel::new('.', Rgb{r: 255, g: 255, b: 255}, Rgb{r: 0, g: 0, b: 0});
+        let x = Pixel::new('x', Rgb{r: 255, g: 255, b: 255}, Rgb{r: 0, g: 0, b: 0});
+        let n = Pixel::new(' ', Rgb{r: 255, g: 255, b: 255}, Rgb{r: 0, g: 0, b: 0});
 
         let sprite = vec![
             s,n,n,n,n,n,n,n,n,n,n,n,n,n,
@@ -33,12 +39,12 @@ fn main() {
             n,n,n,n,n,n,n,n,n,n,n,n,n,n,
         ];
 
-        Basic::new(Coord{x: 14, y: 14}, sprite)
+        basic::new(Coord{x: 14, y: 14}, sprite)
     }.unwrap();
 
     let planet_data = {
-        let y = Pixel::new('█', Color::Rgb{r: 224, g: 167, b: 43}, Color::Rgb{r: 0, g: 0, b: 0});
-        let w = Pixel::new('█', Color::Rgb{r: 230, g: 230, b: 230}, Color::Rgb{r: 0, g: 0, b: 0});
+        let y = Pixel::new('█', Rgb{r: 224, g: 167, b:  43}, Rgb{r: 0, g: 0, b: 0});
+        let w = Pixel::new('█', Rgb{r: 230, g: 230, b: 230}, Rgb{r: 0, g: 0, b: 0});
 
         let sprite = vec![
             y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,
@@ -64,76 +70,68 @@ fn main() {
             y,y,y,y,y,y,y,w,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,y,w,
         ];
 
-        Mask::new(Basic::new(Coord{x: 42, y: 21}, sprite).unwrap(), Pixel::Clear, mask_rules::Circle::new(), false)
+        with_modifier::new(
+            basic::new(Coord{x: 42, y: 21}, sprite).unwrap(),
+            circle_mask::new(false)
+        )
     };
 
     let moon_data = {
-        let b = Pixel::new('█', Color::Rgb{r: 140, g: 140, b: 140}, Color::Rgb{r: 140, g: 140, b: 140});
+        let b = Pixel::new('█', Rgb{r: 140, g: 140, b: 140}, Rgb{r: 140, g: 140, b: 140});
 
-        Mask::new(Fill::new(b), Pixel::Clear, mask_rules::Circle::new(), false)
+        with_modifier::new(
+            fill::new(b),
+            circle_mask::new(false)
+        )
     };
 
-    let mut manager = Manager::new().unwrap();
+    let mut manager = LayoutManager::new().unwrap();
+    let planet = position::craft().size(Coord{x: 21, y: 21}).update(PlanetUpdate{}).done();
 
-    let background = Object::new_basic(background_data.clone(), manager.get_size());
-    background.borrow_mut().size_update = Some(Box::new(BackGroundUpdate{}));
+    {
+        let mut layout = manager.layout.borrow_mut();
 
-    let planet = Object::new_basic(planet_data.clone(), Coord{x: 21, y: 21});
-    planet.borrow_mut().size_update = Some(Box::new(PlanetUpdate{}));
-
-    let moon = Object::new_basic(moon_data.clone(), Coord{x: 10, y: 10});
-    moon.borrow_mut().size_update = Some(Box::new(MoonUpdate{planet: planet.clone()}));
-
-    manager.objects.push(background.clone());
-    manager.objects.push(planet.clone());
-    manager.objects.push(moon.clone());
-    
-    manager.add_task(Task::UpdateAll);
-
-    io::stdout().execute(EnterAlternateScreen).unwrap();
-
-    loop {
-        while poll(time::Duration::from_millis(1)).unwrap() {
-            if let Event::Resize(x, y) = read().unwrap() {
-                manager.resize(x, y);
-            }
-        }
-
-        planet.borrow_mut().inc_offset(&Coord{ x: 1, y: 0 });
-        manager.add_task(planet.borrow().update());
-
-        manager.draw().unwrap();
-
-        thread::sleep(time::Duration::from_millis(100));
+        layout.objects.push(Object{
+            frame: background_data,
+            pos: position::craft().update(MatchSize{}).done()
+        });
+        layout.objects.push(Object{
+            frame: planet_data,
+            pos: planet.clone()
+        });
+        layout.objects.push(Object{
+            frame: moon_data,
+            pos: position::craft().size(Coord{x: 10, y: 10}).update(MoonUpdate{planet: planet.clone()}).done()
+        });
     }
 
-    //io::stdout().execute(LeaveAlternateScreen).unwrap();
+    let mut inputs = Vec::new();
+
+    loop {
+        manager.draw().unwrap();
+
+        planet.borrow_mut().inc_offset(&Coord{ x: 1, y: 0 });
+
+        manager.inputs_over_duration(&mut inputs,time::Duration::from_millis(10));
+    }
 }
 
 struct PlanetUpdate {}
 
-impl SizeUpdate for PlanetUpdate {
-    fn size_update(&mut self, new_size: &Coord, pos: &mut Coord, size: &mut Coord, _offset: &mut Coord, _enabled: &mut bool){
+impl position::SizeUpdate for PlanetUpdate {
+    fn size_update(&mut self, data: &mut position::PosData, new_size: Coord) {
         let temp = Coord{x: (new_size.x / 6), y: ((new_size.y / 5) * 3)};
-        *pos = temp - (*size / Coord{ x: 2, y: 2 });
+        data.pos = temp - (data.size / Coord{ x: 2, y: 2 });
     }
 }
 
 struct MoonUpdate {
-    planet: Rc<RefCell<Object>>,
+    planet: position::Position,
 }
 
-impl SizeUpdate for MoonUpdate {
-    fn size_update(&mut self, _new_size: &Coord, pos: &mut Coord, size: &mut Coord, _offset: &mut Coord, _enabled: &mut bool){
-        let temp = self.planet.borrow().pos + Coord{x: 25, y: -5};
-        *pos = temp - (*size / Coord{ x: 2, y: 2 });
-    }
-}
-
-struct BackGroundUpdate {}
-
-impl SizeUpdate for BackGroundUpdate {
-    fn size_update(&mut self, new_size: &Coord, _pos: &mut Coord, size: &mut Coord, _offset: &mut Coord, _enabled: &mut bool){
-        *size = *new_size;
+impl position::SizeUpdate for MoonUpdate {
+    fn size_update(&mut self, data: &mut position::PosData, _new_size: Coord) {
+        let temp = self.planet.borrow().data.pos + Coord{x: 25, y: -5};
+        data.pos = temp - (data.size / Coord{ x: 2, y: 2 });
     }
 }

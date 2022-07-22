@@ -1,4 +1,10 @@
-use crate::shared::*;
+use crate::prelude::*;
+
+pub type Bundle = Rc<RefCell<IBundle>>;
+
+pub fn new() -> Bundle {
+    Rc::new(RefCell::new(IBundle::new()))
+}
 
 /// holds multiple frames and displays the one indicated by the index
 /// ## Functions
@@ -8,29 +14,23 @@ use crate::shared::*;
 /// - frames
 /// - set_index
 /// - inc_index
-pub struct Bundle {
-    pub frames: Vec<Rc<RefCell<dyn Frame>>>,
+pub struct IBundle {
+    pub frames: Vec<Frame>,
     pub index: usize,
 }
 
-impl Frame for Bundle {
-    fn size(&self) -> Option<Coord> {
-        self.frames[self.index].borrow().size()
-    }
-
-    fn get_draw_data(&self, area: &Vec<Drawsegment>, offset: Coord, size: Coord) -> Vec<DrawData> {
-        self.frames[self.index].borrow().get_draw_data(area, offset, size)
+impl IFrame for IBundle {
+    fn get_draw_data(&self, screenbuf: &mut ScreenBuf, offset: Coord, size: Coord){
+        self.frames[self.index].borrow().get_draw_data(screenbuf, offset, size)
     }
 }
 
-impl Bundle {
-    pub fn new() -> Rc<RefCell<Bundle>> {
-        Rc::new(RefCell::new(
-            Bundle {
-                frames: Vec::new(),
-                index: 0,
-            }
-        ))
+impl IBundle {
+    pub fn new() -> Self {
+        Self {
+            frames: Vec::new(),
+            index: 0,
+        }
     }
 
     pub fn inc_index(&mut self, mut inc: i32) {

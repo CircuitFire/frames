@@ -1,4 +1,11 @@
-use crate::shared::*;
+use crate::prelude::*;
+//use crate::object::update_types::MatchSize;
+
+pub type Fill = Rc<RefCell<IFill>>;
+
+pub fn new(pixel: Pixel) -> Fill {
+    Rc::new(RefCell::new(IFill::new(pixel)))
+}
 
 /// fills whatever any area with the pixel it has
 /// ## Functions
@@ -8,43 +15,48 @@ use crate::shared::*;
 /// ## Methods
 /// - set_pixel
 /// - get_pixel
-pub struct Fill {
+pub struct IFill {
     pub pixel: Pixel,
 }
 
-impl Frame for Fill {
-    fn size(&self) -> Option<Coord> {
-        None
-    }
-
-    fn get_draw_data(&self, area: &Vec<Drawsegment>, _: Coord, _: Coord) -> Vec<DrawData> {
-
-        let mut data: Vec<DrawData> = Vec::with_capacity(area.len());
-
-        //println!("{:?}\n\n", area);
-        for segment in area {
-            //println!("{:?}\n\n{}", segment, segment.end - segment.start.x);
-            data.push(DrawData {
-                start: segment.start,
-                data: vec![self.pixel; segment.len as usize]
-            });
+impl IFrame for IFill {
+    fn get_draw_data(&self, screenbuf: &mut ScreenBuf, _: Coord, _: Coord) {
+        for pos in screenbuf.draw_to() {
+            //println!("{:?}", pos);
+            screenbuf.set(pos, self.pixel);
         }
-        data
     }
 }
 
-impl Fill {
-    pub fn new(pixel: Pixel) -> Rc<RefCell<Fill>> {
-        Rc::new(RefCell::new(
-            Fill {
-                pixel: pixel,
-            }
-        ))
-    }
-    
-    pub fn new_struct(pixel: Pixel) -> Fill {
-        Fill {
+impl IFill {
+    pub fn new(pixel: Pixel) -> Self {
+        Self {
             pixel: pixel,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_helpers::*;
+
+    #[test]
+    fn fill() {
+        let p = Pixel::new('x', Color::Red, Color::Black);
+
+        let expected = vec![p; 25];
+
+        let mut buf = ScreenBuf::new(Coord{x: 5, y: 5});
+
+        let fill = new(p);
+
+        fill.borrow().get_draw_data(&mut buf, Coord{x: 0, y: 0}, Coord{x: 0, y: 0});
+
+        print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
         }
     }
 }

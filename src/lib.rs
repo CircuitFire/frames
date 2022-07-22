@@ -22,17 +22,15 @@
 //! - MaskRule
 //! - MaskLogic
 
-mod shared;
-pub use shared::*;
+pub mod prelude;
 
 pub mod frame_types;
 
-mod object;
-pub use object::*;
+pub mod modifiers;
 
 mod manager;
 pub use manager::*;
 
-pub mod mask_rules;
-
 pub use crossterm;
+
+pub mod test_helpers;

@@ -1,6 +1,34 @@
-use crate::shared::*;
+use crate::prelude::*;
 
 use std::collections::VecDeque;
+use std::str::from_utf8;
+
+pub enum Indent {
+    Normal(usize),
+    Hanging(usize),
+}
+
+impl Indent {
+    pub fn normal(&self) -> usize {
+        match self {
+            Indent::Normal(x)  => *x,
+            Indent::Hanging(_) =>  0,
+        }
+    }
+
+    pub fn hanging(&self) -> usize {
+        match self {
+            Indent::Normal(_)  =>  0,
+            Indent::Hanging(x) => *x,
+        }
+    }
+}
+
+pub type Text = Rc<RefCell<IText>>;
+
+pub fn new() -> Text {
+    Rc::new(RefCell::new(IText::new()))
+}
 
 /// Contains a queue of text entries that each have their own color
 /// ## Functions
@@ -23,58 +51,52 @@ use std::collections::VecDeque;
 /// - remove
 /// - clear
 /// - truncate
-pub struct Text {
-    pub max: Option<usize>,
-    pub fill: PixelData,
-    entries: VecDeque<Entry>,
+pub struct IText {
+    pub tab_spaces: String,
+    ///Positive indent is hanging, negative is normal indent.
+    pub indent:     Indent,
+    pub default:    PixelData,
+    entries:        VecDeque<Entry>,
+    pub max:        Option<usize>,
 }
 
-impl Frame for Text {
+impl IFrame for IText {
+    fn get_draw_data(&self, screenbuf: &mut ScreenBuf, offset: Coord, size: Coord) {
+        let mut data = EntryIter::new(&self.entries, self.default.character, offset, size, &self.indent);
 
-    fn size(&self) -> Option<Coord> {
-        None
-    }
-
-    fn get_draw_data(&self, area: &Vec<Drawsegment>, offset: Coord, size: Coord) -> Vec<DrawData> {
-        let mut datasegments: Vec<DrawData> = Vec::with_capacity(area.len());
-        let mut entry_iter = EntryIter::new(&self.entries, self.fill, offset.y as usize, offset.x as usize, size.x as usize);
-
-        for seg in area {
-            datasegments.push(entry_iter.get_drawdata(seg));
+        for pos in screenbuf.draw_to() {
+            if let Some(pixle) = data.get(pos) {
+                screenbuf.set(pos, pixle);
+            }
+            else {
+                screenbuf.set(pos, Pixel::Opaque(self.default));
+            }
         }
-        
-        datasegments
-    }
 
+    }
 }
 
-impl Text {
-    pub fn new(fill: PixelData) -> Rc<RefCell<Text>> {
-        Rc::new(RefCell::new(
-            Text {
-                max: None,
-                fill: fill,
-                entries: VecDeque::new(),
-            }
-        ))
-    }
-
-    pub fn new_sized(fill: PixelData, entry_max: usize) -> Rc<RefCell<Text>> {
-        Rc::new(RefCell::new(
-            Text {
-                max: Some(entry_max),
-                fill: fill,
-                entries: VecDeque::new(),
-            }
-        ))
+impl IText {
+    pub fn new() -> Self {
+        IText {
+            tab_spaces: "    ".to_string(),
+            indent:     Indent::Hanging(0),
+            default:    PixelData {
+                character: ' ',
+                fg:        Color::Rgb{r: 255, g: 255, b: 255},
+                bg:        Color::Rgb{r:   0, g:   0, b:   0},
+            },
+            entries:    VecDeque::new(),
+            max:        None,
+        }
     }
 
     pub fn push(&mut self, text: String) {
-        self.push_color(text, self.fill.fg, self.fill.bg);
+        self.push_color(text, ColorSet{fg: self.default.fg, bg: self.default.bg});
     }
 
-    pub fn push_color(&mut self, text: String, fg: Color, bg: Color) {
-        let entry = Entry::new(text, fg, bg);
+    pub fn push_color(&mut self, text: String, colors: ColorSet) {
+        let entry = Entry::new(text, colors);
 
         if let Some(size) = self.max {
             if size == self.entries.len() { self.entries.pop_front(); }
@@ -100,27 +122,27 @@ impl Text {
     }
 
     pub fn set_fg(&mut self, index: usize, color: Color) {
-        self.entries[index].fg = color;
+        self.entries[index].main_colors.fg = color;
     }
 
     pub fn get_fg(&self, index: usize) -> Color {
-        self.entries[index].fg
+        self.entries[index].main_colors.fg
     }
 
     pub fn set_bg(&mut self, index: usize, color: Color) {
-        self.entries[index].bg = color;
+        self.entries[index].main_colors.bg = color;
     }
 
     pub fn get_bg(&self, index: usize) -> Color {
-        self.entries[index].bg
+        self.entries[index].main_colors.bg
     }
 
     pub fn insert(&mut self, index: usize, text: String) {
-        self.insert_color(index, text, self.fill.fg, self.fill.bg);
+        self.insert_color(index, text, self.default.fg, self.default.bg);
     }
 
     pub fn insert_color(&mut self, index: usize, text: String, fg: Color, bg: Color) {
-        let entry = Entry::new(text, fg, bg);
+        let entry = Entry::new(text, ColorSet{fg: fg, bg: bg});
 
         if let Some(size) = self.max {
             if size == self.entries.len() { self.entries.pop_front(); }
@@ -140,36 +162,77 @@ impl Text {
     pub fn truncate(&mut self, len: usize) {
         self.entries.truncate(len);
     }
+
+    fn sanitize(&self, mut text: String) -> String {
+        replace(&mut text, "\r", "");
+        replace(&mut text, "\t", &self.tab_spaces);
+        text
+    }
+}
+
+#[derive(Copy, Clone)]
+struct ColorSlice {
+    start:  usize,
+    end:    usize,
+    colors: ColorSet,
 }
 
 struct Entry {
-    text: String,
-    fg: Color,
-    bg: Color,
+    text:          String,
+    len:           usize,
+    new_lines:     usize,
+    main_colors:   ColorSet,
+    colors_slices: Vec<ColorSlice>,
 }
 
 impl Entry {
-    fn new(text: String, fg: Color, bg: Color) -> Self {
+    fn new(mut text: String, color_set: ColorSet) -> Self {
         Entry {
-            text: sanitize(text),
-            fg: fg,
-            bg: bg,
+            len:           text.chars().count(),
+            new_lines:     text.matches("\n").count(),
+            text:          text,
+            main_colors:   color_set,
+            colors_slices: Vec::new(),
         }
     }
 
     fn set_text(&mut self, text: String) {
-        self.text = sanitize(text);
+        self.text      = text;
+        self.len       = self.text.chars().count();
+        self.new_lines = self.text.matches("\n").count();
     }
 
     fn append(&mut self, text: String) {
-        self.text.push_str(&sanitize(text));
+        self.text.push_str(&text);
     }
-}
 
-fn sanitize(mut text: String) -> String {
-    replace(&mut text, "\r", "");
-    replace(&mut text, "\t", "    ");
-    text
+    fn height(&self, width: usize, indent: &Indent) -> usize {
+        let mut hight = self.new_lines + 1;
+        let mut len = self.len - self.new_lines;
+        
+        //length of first line
+        let first_len = width - indent.normal();
+        if len > first_len {
+            hight += 1;
+            len -= first_len;
+        }
+        else { return hight }
+
+        //length of all other lines.
+        let other_len = width - indent.hanging();
+        hight + (len / other_len)
+    }
+
+    fn get_color(&self, pos: usize) -> ColorSet {
+        for slice in &self.colors_slices {
+            if pos >= slice.start && pos < slice.end {
+                return slice.colors
+            }
+            if pos < slice.start { break }
+        }
+
+        self.main_colors
+    }
 }
 
 fn replace(text: &mut String, search: &str, replace: &str) {
@@ -178,168 +241,216 @@ fn replace(text: &mut String, search: &str, replace: &str) {
     }
 }
 
+//need to check if this is faster then copying the string into char vec.
+struct CharIter<'a> {
+    entries:  &'a VecDeque<Entry>,
+    cur_entry:    usize,
+    byte_index:   usize,
+    string_index: usize,
+}
+
+impl<'a> CharIter<'a> {
+    fn new(entries: &'a VecDeque<Entry>, offset: usize) -> CharIter<'a> {
+        CharIter {
+            entries: entries,
+            cur_entry: offset,
+            byte_index: 0,
+            string_index: 0,
+        }
+    }
+
+    ///trying to iterate over all of the chars of the current entry without having to scan through each char each time.
+    fn next(&mut self) -> Option<char> {
+        if let Some(entry) = self.entries.get(self.cur_entry) {
+            //only check for chars if there a some left in the string.
+            if self.string_index < entry.len {
+                //get a byte slice of the string.
+                let mut byte_end = self.byte_index + 1;
+                loop {
+                    //if the byte slice contains a full char return or extend the slice and check until it does.
+                    if let Ok(c) = from_utf8(&entry.text.as_bytes()[self.byte_index..byte_end]) {
+                        self.byte_index = byte_end;
+                        self.string_index += 1;
+
+                        return Some(c.chars().next().unwrap())
+                    }
+                    else {
+                        byte_end += 1;
+                    }
+                }
+                
+            }
+        }
+        
+        None
+    }
+
+    fn next_pixel(&mut self) -> Option<PixelData> {
+        if let Some(c) = self.next() {
+            return Some(PixelData::new_color_set(
+                c,
+                self.entries[self.cur_entry].get_color(self.string_index - 1)
+            ))
+        }
+
+        None
+    }
+
+    fn more_chars(&self) -> bool {
+        if let Some(entry) = self.entries.get(self.cur_entry) {
+            if self.string_index < entry.len {
+                return true
+            }
+        }
+
+        false
+    }
+
+    fn cur_entry(&mut self) -> Option<&Entry> {
+        self.entries.get(self.cur_entry)
+    }
+
+    fn next_entry(&mut self) {
+        self.cur_entry += 1;
+        self.byte_index = 0;
+        self.string_index = 0;
+    }
+}
+
 struct EntryIter<'a> {
-    entries: &'a VecDeque<Entry>,
-    char_iter: Option<CharIter<'a>>,
-    fill: PixelData,
-    index: usize,
-    cur_line: usize,
-    width: usize,
+    char_iter:     CharIter<'a>,
+    entry_line:    usize,
+    default_char:  char,
+    next_pos:      Coord,
+    width:         i32,
+    indent:    &'a Indent,
+    line_finished: bool,
 }
 
 impl<'a> EntryIter<'a> {
-    fn new(entries: &'a VecDeque<Entry>, fill: PixelData, index_skip: usize, line_skip: usize, width: usize) -> EntryIter<'a> {
+    fn new(entries: &'a VecDeque<Entry>, default_char: char, offset: Coord, size: Coord, indent: &'a Indent) -> EntryIter<'a> {
         let mut entry_iter = EntryIter {
-            entries: entries,
-            char_iter: None,
-            fill: fill,
-            index: index_skip,
-            cur_line: 0,
-            width: width,
+            char_iter:     CharIter::new(entries, offset.y as usize),
+            entry_line:    0,
+            default_char:  default_char,
+            next_pos:      Coord{x: 0, y: 0},
+            width:         size.x,
+            indent:        indent,
+            line_finished: false,
         };
 
-        entry_iter.go_to_line(line_skip);
+        entry_iter.skip(offset.x as usize);
         
         entry_iter
     }
 
-    fn go_to_line(&mut self, line: usize) {
-        loop {
-            if let Some(iter) = &mut self.char_iter {
-                let jump = if line > self.cur_line { line - self.cur_line }
-                else { 0 };
 
-                let left = iter.jump_line(jump, self.width);
+    fn skip(&mut self, mut skip: usize) {
+        while skip > 0 {
+            if let Some(entry) = self.char_iter.cur_entry() {
+                let height = entry.height(self.width as usize, &self.indent);
 
-                if left > 0 {
-                    self.char_iter = None;
-                    self.index += 1;
-                }
-
-                self.cur_line += line - left;
-            }
-            else{
-                if self.index < self.entries.len() {
-                    self.char_iter = Some(CharIter::new(&self.entries[self.index], self.fill.character));
+                if height <= skip {
+                    skip -= height;
+                    self.char_iter.cur_entry += 1;
                 }
                 else {
-                    self.cur_line = line;
+                    //skipping into somewhere inside an entry.
+                    self.go_to(Coord{y: skip as i32, x: 0});
+                    self.next_pos = Coord{x: 0, y: 0}; //reset current position because it is changed in go_to.
+                    return
                 }
             }
-            if self.cur_line >= line { break }
+            else {
+                //skipped all of the entries.
+                return
+            }
         }
     }
 
-    fn get_drawdata(&mut self, seg: &Drawsegment) -> DrawData {
-        let mut drawdata = DrawData::from_drawsemgnet(seg);
-        self.go_to_line(seg.start.y as usize);
-    
-        if let Some(iter) = &mut self.char_iter {
-            let mut len = seg.len;
-            if iter.jump(seg.start.x as usize) != '\n' {
-    
-                let mut next = ' ';
-                for _ in 0..seg.len {
-                    next = iter.next();
-                    
-                    if next != '\n' {
-                        len -= 1;
-    
-                        drawdata.data.push(Pixel::new(
-                            next,
-                            self.entries[self.index].fg,
-                            self.entries[self.index].bg,
-                        ))
-                    }
-                    else { break }
-                }
-
-                if next != '\n'  { iter.jump(self.width - seg.end_pos() as usize); }
-            }
-    
-            for _ in 0..len {
-                drawdata.data.push(Pixel::new(
-                    self.fill.character,
-                    self.entries[self.index].fg,
-                    self.entries[self.index].bg,
-                ))
-            }
-    
-            if !iter.data_left() {
-                self.char_iter = None;
-                self.index += 1;
-            }
+    ///when moving to a new line is when to check if it is time to move to the next entry.
+    fn check_inc_entry(&mut self) {
+        if self.char_iter.more_chars() {
+            //record what line we are on local to the entry for indents.
+            self.entry_line += 1;
         }
         else {
-            for _ in 0..seg.len {
-                drawdata.data.push(Pixel::Opaque(self.fill));
+            //move to the next entry
+            self.char_iter.next_entry();
+            self.entry_line = 0;
+        }
+    }
+
+    fn inc_next_pos(&mut self) {
+        self.next_pos.x += 1;
+
+        if self.next_pos.x >= self.width {
+            self.next_pos.x  = 0;
+            self.next_pos.y += 1;
+
+            self.line_finished = false;
+
+            self.check_inc_entry()
+        }
+    }
+
+    fn skip_line(&mut self, pos: Coord) {
+        if self.next_pos.y == pos.y {
+            self.next_pos.x = pos.x - 1;
+        }
+        else {
+            self.next_pos.x = self.width;
+        }
+    }
+
+    fn go_to(&mut self, pos: Coord) {
+        while self.next_pos != pos {
+            if let Some(d) = self.char_iter.next_pixel() {
+                if d.character == '\n' {
+                    self.skip_line(pos);
+                }
+            }
+            else {
+                self.skip_line(pos);
+            }
+
+            self.inc_next_pos();
+        }
+    }
+
+    fn get(&mut self, pos: Coord) -> Option<Pixel> {
+        if self.next_pos != pos {
+            self.go_to(pos)
+        }
+
+        let mut data;
+
+        if let Some(entry) = self.char_iter.cur_entry() {
+            data = PixelData::new(self.default_char, entry.main_colors.fg, entry.main_colors.bg);
+        }
+        else {
+            return None
+        }
+
+        //handling new line
+        if !self.line_finished
+        //first line indent
+        && !((self.entry_line == 0) && (self.next_pos.x < self.indent.normal() as i32))
+        //other line indent
+        && !((self.entry_line != 0) && (self.next_pos.x < self.indent.hanging() as i32)) {
+
+            if let Some(d) = self.char_iter.next_pixel() {
+                if d.character == '\n' {
+                    self.line_finished = true;
+                }
+                else {
+                    data = d;
+                }
             }
         }
-        
 
-        self.cur_line += 1;
-        drawdata
-    }
-}
+        self.inc_next_pos();
 
-struct CharIter<'a> {
-    char_iter: Option<std::str::Chars<'a>>,
-    fill: char,
-}
-
-impl<'a> CharIter<'a> {
-    fn new(some_entry: &'a Entry, fill: char) -> CharIter<'a> {
-
-        CharIter {
-            char_iter: Some(some_entry.text.chars()),
-            fill: fill,
-        }
-    }
-
-    fn next(&mut self) -> char {
-
-        let mut character = self.fill;
-
-        if let Some(iter) = &mut self.char_iter {
-
-            if let Some(pix) = iter.next() {
-                character = pix;
-            }
-            else{
-                self.char_iter = None;
-            }
-            
-        }
-
-        character
-    }
-
-    fn jump(&mut self, chars: usize) -> char {
-        let mut last = ' ';
-
-        for _ in 0..chars {
-            last = self.next();
-            if last == '\n' { break }
-        }
-
-        last
-    }
-
-    fn jump_line(&mut self, mut lines: usize, width: usize) -> usize {
-        for _ in 0..lines {
-            if self.data_left() {
-                self.jump(width);
-                lines -= 1;
-            }
-            else { break }
-        }
-        lines
-    }
-
-    fn data_left(&self) -> bool {
-        if let Some(_) = self.char_iter {
-            true
-        }
-        else { false }
+        Some(Pixel::Opaque(data))
     }
 }
