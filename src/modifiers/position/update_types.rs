@@ -4,7 +4,7 @@ use super::{SizeUpdate, PosData};
 pub struct NoUpdate {}
 
 impl SizeUpdate for NoUpdate {
-    fn size_update(&mut self, pos: &mut PosData, new_size: Coord){}
+    fn size_update(&mut self, _pos: &mut PosData, _new_size: Coord){}
 }
 
 pub struct MatchSize {}

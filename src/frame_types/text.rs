@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::ColorString;
 
 use std::collections::VecDeque;
 use std::str::from_utf8;
@@ -33,36 +34,19 @@ pub fn new() -> Text {
 /// Contains a queue of text entries that each have their own color
 /// ## Functions
 /// - new
-/// - new_sized
 /// 
 /// ## Methods
-/// - push
-/// - push_color
-/// - len
-/// - set_text
-/// - get_text
-/// - append_entry
-/// - set_fg
-/// - get_fg
-/// - set_bg
-/// - get_bg
-/// - insert
-/// - insert_color
-/// - remove
-/// - clear
-/// - truncate
 pub struct IText {
-    pub tab_spaces: String,
+    pub tab_spaces: usize,
     ///Positive indent is hanging, negative is normal indent.
     pub indent:     Indent,
     pub default:    PixelData,
-    entries:        VecDeque<Entry>,
-    pub max:        Option<usize>,
+    pub entries:    VecDeque<Entry>,
 }
 
 impl IFrame for IText {
     fn get_draw_data(&self, screenbuf: &mut ScreenBuf, offset: Coord, size: Coord) {
-        let mut data = EntryIter::new(&self.entries, self.default.character, offset, size, &self.indent);
+        let mut data = EntryIter::new(&self.entries, self.default, offset, size, &self.indent, self.tab_spaces);
 
         for pos in screenbuf.draw_to() {
             if let Some(pixle) = data.get(pos) {
@@ -79,7 +63,7 @@ impl IFrame for IText {
 impl IText {
     pub fn new() -> Self {
         IText {
-            tab_spaces: "    ".to_string(),
+            tab_spaces: 4,
             indent:     Indent::Hanging(0),
             default:    PixelData {
                 character: ' ',
@@ -87,128 +71,55 @@ impl IText {
                 bg:        Color::Rgb{r:   0, g:   0, b:   0},
             },
             entries:    VecDeque::new(),
-            max:        None,
         }
-    }
-
-    pub fn push(&mut self, text: String) {
-        self.push_color(text, ColorSet{fg: self.default.fg, bg: self.default.bg});
-    }
-
-    pub fn push_color(&mut self, text: String, colors: ColorSet) {
-        let entry = Entry::new(text, colors);
-
-        if let Some(size) = self.max {
-            if size == self.entries.len() { self.entries.pop_front(); }
-        }
-        
-        self.entries.push_back(entry);
-    }
-
-    pub fn len(&self) -> usize {
-        self.entries.len()
-    }
-
-    pub fn set_text(&mut self, index: usize, text: String) {
-        self.entries[index].set_text(text);
-    }
-
-    pub fn get_text(&self, index: usize) -> &str {
-        &self.entries[index].text
-    }
-
-    pub fn append_entry(&mut self, index: usize, text: String) {
-        self.entries[index].append(text);
-    }
-
-    pub fn set_fg(&mut self, index: usize, color: Color) {
-        self.entries[index].main_colors.fg = color;
-    }
-
-    pub fn get_fg(&self, index: usize) -> Color {
-        self.entries[index].main_colors.fg
-    }
-
-    pub fn set_bg(&mut self, index: usize, color: Color) {
-        self.entries[index].main_colors.bg = color;
-    }
-
-    pub fn get_bg(&self, index: usize) -> Color {
-        self.entries[index].main_colors.bg
-    }
-
-    pub fn insert(&mut self, index: usize, text: String) {
-        self.insert_color(index, text, self.default.fg, self.default.bg);
-    }
-
-    pub fn insert_color(&mut self, index: usize, text: String, fg: Color, bg: Color) {
-        let entry = Entry::new(text, ColorSet{fg: fg, bg: bg});
-
-        if let Some(size) = self.max {
-            if size == self.entries.len() { self.entries.pop_front(); }
-        }
-        
-        self.entries.insert(index, entry);
-    }
-
-    pub fn remove(&mut self, index: usize) {
-        self.entries.remove(index);
-    }
-
-    pub fn clear(&mut self) {
-        self.entries.clear();
-    }
-
-    pub fn truncate(&mut self, len: usize) {
-        self.entries.truncate(len);
-    }
-
-    fn sanitize(&self, mut text: String) -> String {
-        replace(&mut text, "\r", "");
-        replace(&mut text, "\t", &self.tab_spaces);
-        text
     }
 }
 
-#[derive(Copy, Clone)]
-struct ColorSlice {
-    start:  usize,
-    end:    usize,
-    colors: ColorSet,
-}
-
-struct Entry {
-    text:          String,
-    len:           usize,
-    new_lines:     usize,
-    main_colors:   ColorSet,
-    colors_slices: Vec<ColorSlice>,
+pub struct Entry {
+    text:       ColorString,
+    len:        usize,
+    new_lines:  usize,
+    tabs:       usize,
+    pub colors: Option<ColorSet>,
 }
 
 impl Entry {
-    fn new(mut text: String, color_set: ColorSet) -> Self {
+    pub fn new<T: Into<ColorString>>(text: T) -> Self {
+        let text: ColorString = text.into();
+
         Entry {
-            len:           text.chars().count(),
-            new_lines:     text.matches("\n").count(),
-            text:          text,
-            main_colors:   color_set,
-            colors_slices: Vec::new(),
+            len:       text.string.chars().count(),
+            new_lines: text.string.matches("\n").count(),
+            tabs:      text.string.matches("\t").count(),
+            text,
+            colors:    None,
         }
     }
 
-    fn set_text(&mut self, text: String) {
+    pub fn new_color<T: Into<ColorString>>(text: T, colors: ColorSet) -> Self {
+        let text: ColorString = text.into();
+
+        Entry {
+            len:       text.string.chars().count(),
+            new_lines: text.string.matches("\n").count(),
+            tabs:      text.string.matches("\t").count(),
+            text,
+            colors:    Some(colors),
+        }
+    }
+
+    pub fn set_text<T: Into<ColorString>>(&mut self, text: T) {
+        let text: ColorString = text.into();
+
         self.text      = text;
-        self.len       = self.text.chars().count();
-        self.new_lines = self.text.matches("\n").count();
+        self.len       = self.text.string.chars().count();
+        self.new_lines = self.text.string.matches("\n").count();
+        self.tabs      = self.text.string.matches("\t").count();
     }
 
-    fn append(&mut self, text: String) {
-        self.text.push_str(&text);
-    }
-
-    fn height(&self, width: usize, indent: &Indent) -> usize {
+    fn height(&self, width: usize, indent: &Indent, tab_len: usize) -> usize {
         let mut hight = self.new_lines + 1;
-        let mut len = self.len - self.new_lines;
+        let mut len = self.len + (self.tabs * tab_len) - (self.new_lines + self.tabs);
         
         //length of first line
         let first_len = width - indent.normal();
@@ -223,21 +134,18 @@ impl Entry {
         hight + (len / other_len)
     }
 
-    fn get_color(&self, pos: usize) -> ColorSet {
-        for slice in &self.colors_slices {
-            if pos >= slice.start && pos < slice.end {
-                return slice.colors
-            }
-            if pos < slice.start { break }
+    fn get_color(&self, pos: usize) -> Option<ColorSet> {
+        if let Some(color) = self.text.get_color(pos) {
+            return Some(color)
         }
-
-        self.main_colors
-    }
-}
-
-fn replace(text: &mut String, search: &str, replace: &str) {
-    if text.contains(search) {
-        *text = text.replace(search, replace);
+        else {
+            if let Some(color) = self.colors {
+                return Some(color)
+            }
+            else {
+                return None
+            }
+        }
     }
 }
 
@@ -268,7 +176,7 @@ impl<'a> CharIter<'a> {
                 let mut byte_end = self.byte_index + 1;
                 loop {
                     //if the byte slice contains a full char return or extend the slice and check until it does.
-                    if let Ok(c) = from_utf8(&entry.text.as_bytes()[self.byte_index..byte_end]) {
+                    if let Ok(c) = from_utf8(&entry.text.string.as_bytes()[self.byte_index..byte_end]) {
                         self.byte_index = byte_end;
                         self.string_index += 1;
 
@@ -285,11 +193,18 @@ impl<'a> CharIter<'a> {
         None
     }
 
-    fn next_pixel(&mut self) -> Option<PixelData> {
+    fn next_pixel(&mut self, default: PixelData) -> Option<PixelData> {
         if let Some(c) = self.next() {
+            let color = if let Some(color) = self.entries[self.cur_entry].get_color(self.string_index - 1) {
+                color
+            }
+            else {
+                default.color_set()
+            };
+
             return Some(PixelData::new_color_set(
                 c,
-                self.entries[self.cur_entry].get_color(self.string_index - 1)
+                color
             ))
         }
 
@@ -317,26 +232,36 @@ impl<'a> CharIter<'a> {
     }
 }
 
+struct TabData {
+    pub fg:    Color,
+    pub bg:    Color,
+    pub count: usize,
+}
+
 struct EntryIter<'a> {
-    char_iter:     CharIter<'a>,
-    entry_line:    usize,
-    default_char:  char,
-    next_pos:      Coord,
-    width:         i32,
-    indent:    &'a Indent,
-    line_finished: bool,
+    char_iter:  CharIter<'a>,
+    entry_line: usize,
+    default:    PixelData,
+    next_pos:   Coord,
+    width:      i32,
+    indent: &'a Indent,
+    new_line:   bool,
+    tab_len:    usize,
+    cur_tab:    Option<TabData>,
 }
 
 impl<'a> EntryIter<'a> {
-    fn new(entries: &'a VecDeque<Entry>, default_char: char, offset: Coord, size: Coord, indent: &'a Indent) -> EntryIter<'a> {
+    fn new(entries: &'a VecDeque<Entry>, default: PixelData, offset: Coord, size: Coord, indent: &'a Indent, tab_len: usize) -> EntryIter<'a> {
         let mut entry_iter = EntryIter {
-            char_iter:     CharIter::new(entries, offset.y as usize),
-            entry_line:    0,
-            default_char:  default_char,
-            next_pos:      Coord{x: 0, y: 0},
-            width:         size.x,
-            indent:        indent,
-            line_finished: false,
+            char_iter:    CharIter::new(entries, offset.y as usize),
+            entry_line:   0,
+            default,
+            next_pos:     Coord{x: 0, y: 0},
+            width:        size.x,
+            indent,
+            new_line:     false,
+            tab_len,
+            cur_tab:      None,
         };
 
         entry_iter.skip(offset.x as usize);
@@ -348,7 +273,7 @@ impl<'a> EntryIter<'a> {
     fn skip(&mut self, mut skip: usize) {
         while skip > 0 {
             if let Some(entry) = self.char_iter.cur_entry() {
-                let height = entry.height(self.width as usize, &self.indent);
+                let height = entry.height(self.width as usize, &self.indent, self.tab_len);
 
                 if height <= skip {
                     skip -= height;
@@ -368,19 +293,6 @@ impl<'a> EntryIter<'a> {
         }
     }
 
-    ///when moving to a new line is when to check if it is time to move to the next entry.
-    fn check_inc_entry(&mut self) {
-        if self.char_iter.more_chars() {
-            //record what line we are on local to the entry for indents.
-            self.entry_line += 1;
-        }
-        else {
-            //move to the next entry
-            self.char_iter.next_entry();
-            self.entry_line = 0;
-        }
-    }
-
     fn inc_next_pos(&mut self) {
         self.next_pos.x += 1;
 
@@ -388,9 +300,19 @@ impl<'a> EntryIter<'a> {
             self.next_pos.x  = 0;
             self.next_pos.y += 1;
 
-            self.line_finished = false;
+            //record what line of the current entry we are on for indents.
+            self.entry_line += 1;
 
-            self.check_inc_entry()
+            if self.new_line {
+                self.new_line = false;
+            }
+            else {
+                //move to the next entry
+                if !self.char_iter.more_chars() {
+                    self.char_iter.next_entry();
+                    self.entry_line = 0;
+                }
+            }
         }
     }
 
@@ -405,7 +327,7 @@ impl<'a> EntryIter<'a> {
 
     fn go_to(&mut self, pos: Coord) {
         while self.next_pos != pos {
-            if let Some(d) = self.char_iter.next_pixel() {
+            if let Some(d) = self.char_iter.next_pixel(self.default) {
                 if d.character == '\n' {
                     self.skip_line(pos);
                 }
@@ -418,39 +340,344 @@ impl<'a> EntryIter<'a> {
         }
     }
 
+    fn next_pixel(&mut self) -> Option<PixelData> {
+        //handling in progress tabs.
+        if let Some(tab) = self.cur_tab.as_mut() {
+            let pix = PixelData {
+                character: ' ',
+                fg: tab.fg,
+                bg: tab.bg,
+            };
+
+            tab.count -= 1;
+
+            if tab.count == 0 {
+                self.cur_tab = None;
+            }
+
+            return Some(pix)
+        }
+
+        //try to get next pixel from entry.
+        loop {
+            if let Some(mut d) = self.char_iter.next_pixel(self.default) {
+                match d.character {
+                    '\n' => {
+                        self.new_line = true;
+                        return None
+                    }
+                    '\t' => {
+                        match self.tab_len {
+                            0 => {}
+                            1 => {
+                                d.character = ' ';
+                                return Some(d)
+                            }
+                            _ => {
+                                self.cur_tab = Some(
+                                    TabData {
+                                        fg: d.fg,
+                                        bg: d.bg,
+                                        count: self.tab_len - 1,
+                                    }
+                                );
+    
+                                d.character = ' ';
+                                return Some(d)
+                            }
+                        }
+                    }
+                    _ => {
+                        return Some(d)
+                    }
+                }
+            }
+            else {
+                return None
+            }
+        }
+    }
+
     fn get(&mut self, pos: Coord) -> Option<Pixel> {
         if self.next_pos != pos {
             self.go_to(pos)
         }
 
-        let mut data;
+        let mut data = self.default;
 
         if let Some(entry) = self.char_iter.cur_entry() {
-            data = PixelData::new(self.default_char, entry.main_colors.fg, entry.main_colors.bg);
+            if let Some(colors) = entry.colors {
+                data.fg = colors.fg;
+                data.fg = colors.bg;
+            }
         }
         else {
             return None
         }
 
+        //deciding wether to pull data from the entry,
         //handling new line
-        if !self.line_finished
+        if !self.new_line
         //first line indent
         && !((self.entry_line == 0) && (self.next_pos.x < self.indent.normal() as i32))
         //other line indent
         && !((self.entry_line != 0) && (self.next_pos.x < self.indent.hanging() as i32)) {
 
-            if let Some(d) = self.char_iter.next_pixel() {
-                if d.character == '\n' {
-                    self.line_finished = true;
-                }
-                else {
-                    data = d;
-                }
+            if let Some(d) = self.next_pixel() {
+                data = d;
             }
         }
 
         self.inc_next_pos();
 
         Some(Pixel::Opaque(data))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn blank_test() {
+        let s = Pixel::new(' ', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+
+        let expected = vec![
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        let mut buf = ScreenBuf::new(Coord{x: 10, y: 10});
+
+        let text = new();
+
+        text.borrow().get_draw_data(&mut buf, Coord{x: 0, y: 0}, Coord{x: 10, y: 10});
+
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+    }
+
+    #[test]
+    fn spacing_test() {
+        let x = Pixel::new('x', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let y = Pixel::new('y', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let s = Pixel::new(' ', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+
+        let expected = vec![
+            x,x,x,x,x,s,s,s,s,s,
+            y,y,y,y,y,y,y,y,y,y,
+            x,x,x,x,x,x,x,x,x,x,
+            x,x,s,s,s,s,s,s,s,s,
+            y,y,y,s,s,s,s,s,s,s,
+            y,y,y,y,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        let mut buf = ScreenBuf::new(Coord{x: 10, y: 10});
+
+        let text = new();
+        
+        {
+            let mut temp = text.borrow_mut();
+
+            temp.entries.push_back(Entry::new("xxxxx"));
+            temp.entries.push_back(Entry::new("yyyyyyyyyy"));
+            temp.entries.push_back(Entry::new("xxxxxxxxxxxx"));
+            temp.entries.push_back(Entry::new("yyy\nyyyy\n"));
+            temp.entries.push_back(Entry::new("xxxxx"));
+        }
+
+        text.borrow().get_draw_data(&mut buf, Coord{x: 0, y: 0}, Coord{x: 10, y: 10});
+
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+    }
+
+    #[test]
+    fn indent_test1() {
+        let x = Pixel::new('x', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let y = Pixel::new('y', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let s = Pixel::new(' ', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+
+        let expected = vec![
+            s,x,x,x,x,x,s,s,s,s,
+            s,y,y,y,y,y,y,y,y,y,
+            y,s,s,s,s,s,s,s,s,s,
+            s,x,x,x,x,x,x,x,x,x,
+            x,x,x,s,s,s,s,s,s,s,
+            s,y,y,y,s,s,s,s,s,s,
+            y,y,y,y,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,x,x,x,x,x,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        let mut buf = ScreenBuf::new(Coord{x: 10, y: 10});
+
+        let text = new();
+        
+        {
+            let mut temp = text.borrow_mut();
+
+            temp.indent = Indent::Normal(1);
+
+            temp.entries.push_back(Entry::new("xxxxx"));
+            temp.entries.push_back(Entry::new("yyyyyyyyyy"));
+            temp.entries.push_back(Entry::new("xxxxxxxxxxxx"));
+            temp.entries.push_back(Entry::new("yyy\nyyyy\n"));
+            temp.entries.push_back(Entry::new("xxxxx"));
+        }
+
+        text.borrow().get_draw_data(&mut buf, Coord{x: 0, y: 0}, Coord{x: 10, y: 10});
+
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+    }
+
+    #[test]
+    fn indent_test2() {
+        let x = Pixel::new('x', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let y = Pixel::new('y', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let s = Pixel::new(' ', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+
+        let expected = vec![
+            x,x,x,x,x,s,s,s,s,s,
+            y,y,y,y,y,y,y,y,y,y,
+            x,x,x,x,x,x,x,x,x,x,
+            s,x,x,s,s,s,s,s,s,s,
+            y,y,y,s,s,s,s,s,s,s,
+            s,y,y,y,y,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        let mut buf = ScreenBuf::new(Coord{x: 10, y: 10});
+
+        let text = new();
+        
+        {
+            let mut temp = text.borrow_mut();
+
+            temp.indent = Indent::Hanging(1);
+
+            temp.entries.push_back(Entry::new("xxxxx"));
+            temp.entries.push_back(Entry::new("yyyyyyyyyy"));
+            temp.entries.push_back(Entry::new("xxxxxxxxxxxx"));
+            temp.entries.push_back(Entry::new("yyy\nyyyy\n"));
+            temp.entries.push_back(Entry::new("xxxxx"));
+        }
+
+        text.borrow().get_draw_data(&mut buf, Coord{x: 0, y: 0}, Coord{x: 10, y: 10});
+
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+    }
+
+    #[test]
+    fn offset_test() {
+        let x = Pixel::new('x', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let y = Pixel::new('y', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let s = Pixel::new(' ', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+
+        let expected = vec![
+            y,y,y,y,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        let mut buf = ScreenBuf::new(Coord{x: 10, y: 10});
+
+        let text = new();
+        
+        {
+            let mut temp = text.borrow_mut();
+
+            temp.entries.push_back(Entry::new("xxxxx"));
+            temp.entries.push_back(Entry::new("yyyyyyyyyy"));
+            temp.entries.push_back(Entry::new("xxxxxxxxxxxx"));
+            temp.entries.push_back(Entry::new("yyy\nyyyy\n"));
+            temp.entries.push_back(Entry::new("xxxxx"));
+        }
+
+        text.borrow().get_draw_data(&mut buf, Coord{x: 5, y: 0}, Coord{x: 10, y: 10});
+
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+    }
+
+    #[test]
+    fn offset_test2() {
+        let x = Pixel::new('x', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let s = Pixel::new(' ', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+
+        let expected = vec![
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        let mut buf = ScreenBuf::new(Coord{x: 10, y: 10});
+
+        let text = new();
+        
+        {
+            let mut temp = text.borrow_mut();
+
+            temp.entries.push_back(Entry::new("xxxxx"));
+            temp.entries.push_back(Entry::new("yyyyyyyyyy"));
+            temp.entries.push_back(Entry::new("xxxxxxxxxxxx"));
+            temp.entries.push_back(Entry::new("yyy\nyyyy\n"));
+            temp.entries.push_back(Entry::new("xxxxx"));
+        }
+
+        text.borrow().get_draw_data(&mut buf, Coord{x: 0, y: 4}, Coord{x: 10, y: 10});
+
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
     }
 }

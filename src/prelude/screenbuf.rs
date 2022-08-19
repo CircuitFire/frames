@@ -210,6 +210,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn none() {
+        let buf = ScreenBuf::new(Coord{x: 0, y: 0});
+
+        assert_eq!(buf.draw_to().next(), None)
+    }
+
+    #[test]
     fn draw_to() {
         let expected = vec![
             Coord{x: 0, y: 0}, Coord{x: 1, y: 0}, Coord{x: 2, y: 0}, Coord{x: 3, y: 0}, Coord{x: 4, y: 0},
@@ -222,7 +229,7 @@ mod tests {
         let buf = ScreenBuf::new(Coord{x: 5, y: 5});
         
         for (i, x) in buf.draw_to().enumerate() {
-            println!("{}", i);
+            //println!("{}", i);
             assert_eq!(expected[i], x)
         }
     }

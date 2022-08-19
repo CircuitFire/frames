@@ -10,7 +10,7 @@ use std::{
 
 use crossterm::{
     QueueableCommand, ExecutableCommand,
-    style::{Print, SetForegroundColor, SetBackgroundColor},
+    style::{Print, SetForegroundColor, SetBackgroundColor, ResetColor},
     event::{read, poll, Event},
     cursor,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen}
@@ -29,6 +29,9 @@ pub trait ManagerTrait {
     ///Gets the current manager size
     fn size(&self) -> Coord;
 
+    ///Set the managers targeted fps, used in fps input.
+    fn set_target_fps(&mut self, fps: u32);
+
     ///Draws all of the areas given by the tasks onto the screen.
     fn draw(&mut self) -> Result<(), ErrorKind>;
 
@@ -40,6 +43,9 @@ pub trait ManagerTrait {
 
     ///Returns a list of all inputs that occurred during the given duration. Automatically handling screen resizes.
     fn inputs_over_duration(&mut self, inputs: &mut Vec<Input>, duration: Duration);
+
+    ///Returns a list of all inputs that occurred during the given duration. Automatically handling screen resizes. Trying to match the managers target fps.
+    fn fps_input(&mut self, inputs: &mut Vec<Input>);
 
     ///true goes to alt screen false returns from alt.
     fn set_alt_screen(&mut self, alt: bool);
@@ -66,6 +72,8 @@ pub struct Manager {
     printer: PixelPrinter,
     size_updated: bool,
     alt_screen:   bool,
+    fps_last:     Instant,
+    fps_target:   Duration,
 }
 
 impl Manager {
@@ -76,10 +84,12 @@ impl Manager {
         //println!("{:?}", size);
 
         Ok(Manager {
-            screenbuf: ScreenBuf::new(size),
-            printer: PixelPrinter::new(),
+            screenbuf:    ScreenBuf::new(size),
+            printer:      PixelPrinter::new(),
             size_updated: true,
             alt_screen:   true,
+            fps_last:     Instant::now(),
+            fps_target:   Duration::from_secs(1)/30,
         })
     }
 
@@ -97,6 +107,11 @@ impl Manager {
     ///Gets the current manager size
     pub fn size(&self) -> Coord {
         self.screenbuf.size()
+    }
+
+    ///Set the managers targeted fps, used in fps input.
+    pub fn set_target_fps(&mut self, fps: u32) {
+        self.fps_target = Duration::from_secs(1)/fps;
     }
 
     ///Draws all of the areas given by the tasks onto the screen.
@@ -143,6 +158,26 @@ impl Manager {
                 inputs.push(input)
             }
         }
+
+        //collect any left over inputs that can be grabbed without waiting.
+        while let Some(input) = self.poll_input(Duration::from_secs(0)) {
+            inputs.push(input)
+        }
+    }
+
+    ///Returns a list of all inputs that occurred during the given duration. Automatically handling screen resizes. tries to match targeted fps.
+    pub fn fps_input(&mut self, inputs: &mut Vec<Input>) {
+        let now = Instant::now();
+        let target = self.fps_last + self.fps_target;
+
+        if now < target {
+            self.inputs_over_duration(inputs, target - now);
+        }
+        else {
+            self.inputs_over_duration(inputs, Duration::from_secs(0));
+        }
+
+        self.fps_last = Instant::now();
     }
 
     ///true goes to alt screen false returns from alt.
@@ -153,6 +188,7 @@ impl Manager {
             }
             else {
                 let _ = std::io::stdout().execute(LeaveAlternateScreen);
+                let _ = std::io::stdout().execute(ResetColor);
             }
 
             self.alt_screen = alt
@@ -167,6 +203,7 @@ impl Manager {
         }
         else {
             let _ = std::io::stdout().execute(LeaveAlternateScreen);
+            let _ = std::io::stdout().execute(ResetColor);
         }
     }
 
@@ -182,16 +219,27 @@ impl Manager {
     }
 
     fn event_to_input(&mut self) -> Option<Input> {
+        use Event::*;
+
         match read().unwrap() {
-            Event::Resize(x, y) => {
+            Resize(x, y) => {
                 self.resize(x, y);
                 None
             }
-            Event::Key(e) => {
+            Key(e) => {
                 Some(Input::KeyBoard(e))
             }
-            Event::Mouse(e) => {
+            Mouse(e) => {
                 Some(Input::Mouse(e))
+            }
+            FocusGained => {
+                Some(Input::FocusGained)
+            }
+            FocusLost => {
+                Some(Input::FocusLost)
+            }
+            Paste(s) => {
+                Some(Input::Paste(s))
             }
         }
     }
@@ -202,6 +250,7 @@ impl Drop for Manager {
         //if we are still in an alternate when manager dies try and return to the normal one.
         if self.alt_screen {
             let _ = std::io::stdout().execute(LeaveAlternateScreen);
+            let _ = std::io::stdout().execute(ResetColor);
         }
     }
 }

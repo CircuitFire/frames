@@ -15,7 +15,7 @@ pub type Coord = coord::Coord<i32>;
 pub trait IFrame {
     fn get_draw_data(&self, screen: &mut ScreenBuf, offset: Coord, size: Coord);
 
-    fn update(&mut self, new_size: Coord) {}
+    fn update(&mut self, _new_size: Coord) {}
 }
 
 pub type Frame = Rc<RefCell<dyn IFrame>>;
@@ -36,13 +36,13 @@ pub struct PositionModifier {
 /// - update
 pub trait IModifier {
     /// Called when the modifier is added to the screen buffer.
-    fn init(&mut self, screen: &ScreenBuf) {}
+    fn init(&mut self, _screen: &ScreenBuf) {}
 
     /// Pixels getting written to the buffer are passed through this function before being written.
     fn modify(&mut self, pos_pixel: &mut PosPixel);
 
     /// If the modifier changes 
-    fn mod_position(&mut self, cur_size: Coord, cur_offset: Coord) -> PositionModifier {
+    fn mod_position(&mut self, _cur_size: Coord, _cur_offset: Coord) -> PositionModifier {
         PositionModifier {
             size:   None,
             offset: None,
@@ -57,7 +57,7 @@ pub trait IModifier {
         offset
     }
 
-    fn update(&mut self, new_size: Coord) {}
+    fn update(&mut self, _new_size: Coord) {}
 }
 
 pub type Modifier = Rc<RefCell<dyn IModifier>>;
@@ -90,6 +90,10 @@ impl PixelData {
             fg: colors.fg,
             bg: colors.bg,
         }
+    }
+
+    pub fn color_set(&self) -> ColorSet {
+        ColorSet { fg: self.fg, bg: self.bg }
     }
 }
 
@@ -124,4 +128,7 @@ impl Pixel {
 pub enum Input {
     KeyBoard(KeyEvent),
     Mouse(MouseEvent),
+    FocusGained,
+    FocusLost,
+    Paste(String),
 }

@@ -23,6 +23,11 @@ impl ManagerTrait for LayoutManager {
         self.manager.size()
     }
 
+    ///Set the managers targeted fps, used in fps input.
+    fn set_target_fps(&mut self, fps: u32) {
+        self.manager.set_target_fps(fps)
+    }
+
     ///Draws all of the areas given by the tasks onto the screen.
     fn draw(&mut self) -> Result<(), ErrorKind> {
         self.manager.draw(self.layout.clone())
@@ -41,6 +46,11 @@ impl ManagerTrait for LayoutManager {
     ///Returns a list of all inputs that occurred during the given duration. Automatically handling screen resizes.
     fn inputs_over_duration(&mut self, inputs: &mut Vec<Input>, duration: Duration) {
         self.manager.inputs_over_duration(inputs, duration)
+    }
+
+    ///Returns a list of all inputs that occurred during the given duration. Automatically handling screen resizes. Trying to match the managers target fps.
+    fn fps_input(&mut self, inputs: &mut Vec<Input>) {
+        self.manager.fps_input(inputs)
     }
 
     ///true goes to alt screen false returns from alt.

@@ -28,6 +28,11 @@ impl CraftPosition {
         self
     }
 
+    pub fn frame_size(mut self, size: Coord) -> Self {
+        self.0.data.frame_size = size;
+        self
+    }
+
     pub fn offset(mut self, offset: Coord) -> Self {
         self.0.data.offset = offset;
         self
@@ -66,6 +71,7 @@ impl CraftPosition {
 pub struct PosData {
     pub pos: Coord,
     pub size: Coord,
+    pub frame_size: Coord,
     pub offset: Coord,
     pub rot: bool,
     pub yflip: bool,
@@ -133,6 +139,7 @@ impl IPosition {
             data: PosData {
                 pos:         Coord{x:0, y:0},
                 size:        Coord{x:0, y:0},
+                frame_size:  Coord{x:0, y:0},
                 offset:      Coord{x:0, y:0},
                 rot:         false,
                 yflip:       false,
@@ -190,9 +197,9 @@ impl IPosition {
     }
 
     /// Increments the offset of the frame by the given amount.
-    pub fn inc_offset(&mut self, inc: &Coord) {
-        self.data.offset += *inc;
-        self.data.offset %= self.data.size * Coord{ x: 2, y: 2 };
+    pub fn inc_offset(&mut self, inc: Coord) {
+        self.data.offset += inc;
+        self.data.offset %= self.data.frame_size * Coord{ x: 2, y: 2 };
     }
 
     fn calc_offset(&self) -> Coord {
@@ -400,7 +407,6 @@ mod tests {
         let b = Pixel::new('B', Rgb{r: 0, g: 0, b: 0}, Rgb{r: 0, g: 0, b: 0});
         let r = Pixel::new('R', Rgb{r: 255, g: 0, b: 0}, Rgb{r: 0, g: 0, b: 0});
         let w = Pixel::new('W', Rgb{r: 255, g: 255, b: 255}, Rgb{r: 0, g: 0, b: 0});
-        let c = Pixel::Clear;
 
         let expected = vec![
             b,r,r,r,w,w,w,b,b,
