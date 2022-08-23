@@ -6,6 +6,7 @@ use crate::prelude::*;
 use std::{
     io::{stdout, Write},
     time::Instant,
+    thread::sleep,
 };
 
 use crossterm::{
@@ -47,10 +48,14 @@ pub trait ManagerTrait {
     ///Returns a list of all inputs that occurred during the given duration. Automatically handling screen resizes. Trying to match the managers target fps.
     fn fps_input(&mut self, inputs: &mut Vec<Input>);
 
-    ///true goes to alt screen false returns from alt.
+    ///Wait to match the target fps.
+    fn fps_wait(&mut self);
+
+    ///True goes to alt screen false returns from alt.
     fn set_alt_screen(&mut self, alt: bool);
 
-    fn toggle_alt_screen(&mut self);
+    ///When debug mode is on the manager will not return to the primary screen when dropped, so crash logs are not dropped.
+    fn set_debug(&mut self, debug: bool);
 }
 
 /// The frame Manager holds on to all of the data necessary for drawing frames into the terminal
@@ -68,12 +73,13 @@ pub trait ManagerTrait {
 /// - add_task
 /// - draw
 pub struct Manager {
-    screenbuf: ScreenBuf,
-    printer: PixelPrinter,
+    screenbuf:    ScreenBuf,
+    printer:      PixelPrinter,
     size_updated: bool,
     alt_screen:   bool,
     fps_last:     Instant,
     fps_target:   Duration,
+    debug:        bool,
 }
 
 impl Manager {
@@ -90,6 +96,7 @@ impl Manager {
             alt_screen:   true,
             fps_last:     Instant::now(),
             fps_target:   Duration::from_secs(1)/30,
+            debug:        false,
         })
     }
 
@@ -180,6 +187,16 @@ impl Manager {
         self.fps_last = Instant::now();
     }
 
+    ///Wait to match the target fps.
+    pub fn fps_wait(&mut self) {
+        let now = Instant::now();
+        let target = self.fps_last + self.fps_target;
+
+        if now < target {
+            sleep(target - now);
+        }
+    }
+
     ///true goes to alt screen false returns from alt.
     pub fn set_alt_screen(&mut self, alt: bool) {
         if alt != self.alt_screen {
@@ -195,16 +212,8 @@ impl Manager {
         }
     }
 
-    pub fn toggle_alt_screen(&mut self) {
-        self.alt_screen = !self.alt_screen;
-
-        if self.alt_screen {
-            let _ = std::io::stdout().execute(EnterAlternateScreen);
-        }
-        else {
-            let _ = std::io::stdout().execute(LeaveAlternateScreen);
-            let _ = std::io::stdout().execute(ResetColor);
-        }
+    pub fn set_debug(&mut self, debug: bool) {
+        self.debug = debug
     }
 
     /// Changes the size of the screen to the new size, and refreshes the screen on next draw.
@@ -249,7 +258,9 @@ impl Drop for Manager {
     fn drop(&mut self) {
         //if we are still in an alternate when manager dies try and return to the normal one.
         if self.alt_screen {
-            let _ = std::io::stdout().execute(LeaveAlternateScreen);
+            if !self.debug {
+                let _ = std::io::stdout().execute(LeaveAlternateScreen);
+            }
             let _ = std::io::stdout().execute(ResetColor);
         }
     }

@@ -53,13 +53,19 @@ impl ManagerTrait for LayoutManager {
         self.manager.fps_input(inputs)
     }
 
+    ///Wait to match the target fps.
+    fn fps_wait(&mut self){
+        self.manager.fps_wait();
+    }
+
     ///true goes to alt screen false returns from alt.
     fn set_alt_screen(&mut self, alt: bool) {
         self.manager.set_alt_screen(alt)
     }
 
-    fn toggle_alt_screen(&mut self) {
-        self.manager.toggle_alt_screen()
+    ///When debug mode is on the manager will not return to the primary screen when dropped, so crash logs are not dropped.
+    fn set_debug(&mut self, debug: bool) {
+        self.manager.set_debug(debug)
     }
 }
 
