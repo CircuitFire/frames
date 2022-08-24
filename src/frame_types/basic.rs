@@ -27,7 +27,7 @@ impl IFrame for IBasic {
     fn get_draw_data(&self, screenbuf: &mut ScreenBuf, offset: Coord, _: Coord) {
 
         for pos in screenbuf.draw_to() {
-            screenbuf.set(pos, self.get_pixel((pos + offset)));
+            screenbuf.set(pos, self.get_pixel(pos + offset));
         }
     }
 }
