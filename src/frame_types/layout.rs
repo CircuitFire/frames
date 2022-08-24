@@ -11,7 +11,7 @@ pub struct Object {
 pub type Layout = Rc<RefCell<ILayout>>;
 
 pub fn new() -> Layout {
-    Rc::new(RefCell::new(ILayout::new()))
+    wrap(ILayout::new())
 }
 
 pub struct ILayout {

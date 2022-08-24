@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub type Fill = Rc<RefCell<IFill>>;
 
 pub fn new(pixel: Pixel) -> Fill {
-    Rc::new(RefCell::new(IFill::new(pixel)))
+    wrap(IFill::new(pixel))
 }
 
 /// fills whatever any area with the pixel it has

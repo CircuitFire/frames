@@ -3,7 +3,7 @@ use crate::prelude::*;
 pub type WithModifier = Rc<RefCell<IWithModifier>>;
 
 pub fn new(frame: Frame, modifier: Modifier) -> WithModifier {
-    Rc::new(RefCell::new(IWithModifier::new(frame, modifier)))
+    wrap(IWithModifier::new(frame, modifier))
 }
 
 pub struct IWithModifier{

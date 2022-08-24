@@ -28,7 +28,7 @@ impl Indent {
 pub type Text = Rc<RefCell<IText>>;
 
 pub fn new() -> Text {
-    Rc::new(RefCell::new(IText::new()))
+    wrap(IText::new())
 }
 
 /// Contains a queue of text entries that each have their own color
@@ -199,7 +199,7 @@ impl<'a> CharIter<'a> {
                 color
             }
             else {
-                default.color_set()
+                default.get_color_set()
             };
 
             return Some(PixelData::new_color_set(

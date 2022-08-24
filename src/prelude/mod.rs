@@ -10,6 +10,10 @@ pub use screenbuf::*;
 
 pub type Coord = coord::Coord<i32>;
 
+pub fn wrap<T>(x: T) -> Rc<RefCell<T>> {
+    Rc::new(RefCell::new(x))
+}
+
 /// - get_draw_data
 /// - update
 pub trait IFrame {
@@ -78,22 +82,27 @@ pub struct PixelData {
 impl PixelData {
     pub fn new(character: char, fg: Color, bg: Color) -> PixelData {
         PixelData {
-            character: character,
-            fg: fg,
-            bg: bg,
+            character,
+            fg,
+            bg,
         }
     }
 
     pub fn new_color_set(character: char, colors: ColorSet) -> PixelData {
         PixelData {
-            character: character,
+            character,
             fg: colors.fg,
             bg: colors.bg,
         }
     }
 
-    pub fn color_set(&self) -> ColorSet {
+    pub fn get_color_set(&self) -> ColorSet {
         ColorSet { fg: self.fg, bg: self.bg }
+    }
+
+    pub fn set_color_set(&mut self, colors: ColorSet) {
+        self.fg = colors.fg;
+        self.bg = colors.bg;
     }
 }
 
@@ -105,23 +114,37 @@ pub enum Pixel {
 
 impl Pixel {
     pub fn new(character: char, fg: Color, bg: Color) -> Pixel {
-        Pixel::Opaque(
+        Self::Opaque(
             PixelData {
-                character: character,
-                fg: fg,
-                bg: bg,
+                character,
+                fg,
+                bg,
             }
         )
     }
 
     pub fn new_color_set(character: char, colors: ColorSet) -> Pixel {
-        Pixel::Opaque(
+        Self::Opaque(
             PixelData {
-                character: character,
+                character,
                 fg: colors.fg,
                 bg: colors.bg,
             }
         )
+    }
+
+    pub fn as_ref(&self) -> Option<&PixelData> {
+        match *self {
+            Self::Opaque(ref x) => Some(x),
+            Self::Clear => None,
+        }
+    }
+
+    pub fn as_mut(&mut self) -> Option<&mut PixelData> {
+        match *self {
+            Self::Opaque(ref mut x) => Some(x),
+            Self::Clear => None,
+        }
     }
 }
 

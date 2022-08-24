@@ -3,7 +3,7 @@ use crate::prelude::*;
 pub type Bundle = Rc<RefCell<IBundle>>;
 
 pub fn new() -> Bundle {
-    Rc::new(RefCell::new(IBundle::new()))
+    wrap(IBundle::new())
 }
 
 /// holds multiple frames and displays the one indicated by the index
