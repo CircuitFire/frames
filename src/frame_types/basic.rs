@@ -27,7 +27,7 @@ impl IFrame for IBasic {
     fn get_draw_data(&self, screenbuf: &mut ScreenBuf, offset: Coord, _: Coord) {
 
         for pos in screenbuf.draw_to() {
-            screenbuf.set(pos, self.get_pixel(&(pos + offset)));
+            screenbuf.set(pos, self.get_pixel((pos + offset)));
         }
     }
 }
@@ -60,20 +60,20 @@ impl IBasic {
         }
     }
 
-    pub fn get_pixel(&self, coord: &Coord) -> Pixel {
-        let new_coord = *coord % self.size;
-        self.pixels[self.flat_pos(&new_coord)]
+    pub fn get_pixel(&self, coord: Coord) -> Pixel {
+        let new_coord = coord % self.size;
+        self.pixels[self.flat_pos(new_coord)]
     }
 
     pub fn get_pixels(&self) -> &Vec<Pixel> {
         &self.pixels
     }
 
-    fn flat_pos(&self, coord: &Coord) -> usize {
+    fn flat_pos(&self, coord: Coord) -> usize {
         ((coord.y * self.size.x) + coord.x) as usize
     } 
 
-    pub fn set_pixel(&mut self, coord: &Coord, pixel: Pixel) {
+    pub fn set_pixel(&mut self, coord: Coord, pixel: Pixel) {
         let index = self.flat_pos(coord);
 
         self.pixels[index] = pixel;
