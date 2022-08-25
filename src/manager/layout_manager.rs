@@ -2,6 +2,9 @@ use crate::prelude::*;
 use super::manager::*;
 use crate::frame_types::layout::{self, Layout};
 
+pub use crate::frame_types::layout::Object;
+pub use crate::modifiers::position;
+
 pub struct LayoutManager {
     pub layout: Layout,
     manager: Manager,
