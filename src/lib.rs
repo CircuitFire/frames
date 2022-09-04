@@ -40,3 +40,6 @@ pub use color_string::{ColorString, ColorSlice};
 
 mod vec2d;
 pub use vec2d::Vec2D;
+
+mod coord_iter;
+pub use coord_iter::CoordIter;
