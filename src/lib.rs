@@ -37,3 +37,6 @@ pub mod test_helpers;
 
 mod color_string;
 pub use color_string::{ColorString, ColorSlice};
+
+mod vec2d;
+pub use vec2d::Vec2D;
