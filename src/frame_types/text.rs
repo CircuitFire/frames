@@ -56,7 +56,15 @@ impl IFrame for IText {
 
         let mut data = EntryIter::new(&self.entries, self.default, offset, size, &self.indent, self.tab_spaces);
 
-        for pos in screenbuf.draw_to().skip_lines(skip) {
+        let mut draw_to = screenbuf.draw_to();
+
+        for _ in 0..(skip * size.x) {
+            if let Some(pos) = draw_to.next() {
+                screenbuf.set(pos, Pixel::Opaque(self.default));
+            }
+        }
+
+        for pos in draw_to {
             if let Some(pixle) = data.get(pos) {
                 screenbuf.set(pos, pixle);
             }
@@ -324,31 +332,6 @@ impl<'a> EntryIter<'a> {
         }
     }
 
-    fn skip_line(&mut self, pos: Coord) {
-        if self.next_pos.y == pos.y {
-            self.next_pos.x = pos.x - 1;
-        }
-        else {
-            self.next_pos.x = self.width;
-        }
-    }
-
-    fn go_to(&mut self, pos: Coord) {
-        while self.next_pos != pos {
-            if let Some(d) = self.char_iter.next_pixel(self.default) {
-                if d.character == '\n' {
-                    self.new_line = true;
-                    self.skip_line(pos);
-                }
-            }
-            else {
-                self.skip_line(pos);
-            }
-
-            self.inc_next_pos();
-        }
-    }
-
     fn next_pixel(&mut self) -> Option<PixelData> {
         //handling in progress tabs.
         if let Some(tab) = self.cur_tab.as_mut() {
@@ -407,11 +390,7 @@ impl<'a> EntryIter<'a> {
         }
     }
 
-    fn get(&mut self, pos: Coord) -> Option<Pixel> {
-        if self.next_pos != pos {
-            self.go_to(pos)
-        }
-
+    fn next(&mut self) -> Option<Pixel> {
         let mut data = self.default;
 
         if let Some(entry) = self.char_iter.cur_entry() {
@@ -421,6 +400,7 @@ impl<'a> EntryIter<'a> {
             }
         }
         else {
+            self.inc_next_pos();
             return None
         }
 
@@ -441,12 +421,24 @@ impl<'a> EntryIter<'a> {
 
         Some(Pixel::Opaque(data))
     }
+
+    fn go_to(&mut self, pos: Coord) {
+        while self.next_pos != pos {
+            self.next();
+        }
+    }
+
+    pub fn get(&mut self, pos: Coord) -> Option<Pixel> {
+        self.go_to(pos);
+
+        self.next()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    //use crate::test_helpers::*;
+    use crate::test_helpers::*;
 
     #[test]
     fn blank_test() {
@@ -692,7 +684,7 @@ mod tests {
     }
 
     #[test]
-    fn pos_offset_test() {
+    fn offset_test3() {
         let x = Pixel::new('x', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
         let y = Pixel::new('y', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
         let s = Pixel::new(' ', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
@@ -727,10 +719,11 @@ mod tests {
             s,s,s,s,s,s,s,s,s,s,
         ];
 
-        //println!("offset: {}", off); 
+        //println!("offset: {}", off);
         //print_buffer(&buf);
 
         for (i, x) in expected.iter().enumerate() {
+            //println!("i: {}, {:?}, {:?}", i, buf.buffer.get_flat(i), *x);
             assert_eq!(buf.buffer.get_flat(i), *x)
         }
 
@@ -854,6 +847,29 @@ mod tests {
 
         let expected = vec![
             x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        //println!("offset: {}", off); 
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+
+        let off = 8;
+        text.borrow().get_draw_data(&mut buf, Coord{x: off, y: 0}, Coord{x: 10, y: 10});
+
+        let expected = vec![
+            s,s,s,s,s,s,s,s,s,s,
             s,s,s,s,s,s,s,s,s,s,
             s,s,s,s,s,s,s,s,s,s,
             s,s,s,s,s,s,s,s,s,s,
