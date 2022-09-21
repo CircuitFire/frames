@@ -1,5 +1,5 @@
 use crate::prelude::*;
-use super::manager::*;
+pub use super::manager::*;
 use crate::frame_types::layout::{self, Layout};
 
 pub use crate::frame_types::layout::Object;

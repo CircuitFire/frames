@@ -4,6 +4,8 @@ use crate::ColorString;
 use std::collections::VecDeque;
 use std::str::from_utf8;
 
+use std::cmp::{max, min};
+
 pub enum Indent {
     Normal(usize),
     Hanging(usize),
@@ -46,9 +48,15 @@ pub struct IText {
 
 impl IFrame for IText {
     fn get_draw_data(&self, screenbuf: &mut ScreenBuf, offset: Coord, size: Coord) {
+        let skip = 0 - (min(offset.y, 0) + min(offset.x, 0));
+        let offset = Coord {
+            x: max(offset.x, 0),
+            y: max(offset.y, 0),
+        };
+
         let mut data = EntryIter::new(&self.entries, self.default, offset, size, &self.indent, self.tab_spaces);
 
-        for pos in screenbuf.draw_to() {
+        for pos in screenbuf.draw_to().skip_lines(skip) {
             if let Some(pixle) = data.get(pos) {
                 screenbuf.set(pos, pixle);
             }
@@ -329,6 +337,7 @@ impl<'a> EntryIter<'a> {
         while self.next_pos != pos {
             if let Some(d) = self.char_iter.next_pixel(self.default) {
                 if d.character == '\n' {
+                    self.new_line = true;
                     self.skip_line(pos);
                 }
             }
@@ -437,6 +446,7 @@ impl<'a> EntryIter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    //use crate::test_helpers::*;
 
     #[test]
     fn blank_test() {
@@ -674,6 +684,188 @@ mod tests {
 
         text.borrow().get_draw_data(&mut buf, Coord{x: 0, y: 4}, Coord{x: 10, y: 10});
 
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+    }
+
+    #[test]
+    fn pos_offset_test() {
+        let x = Pixel::new('x', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let y = Pixel::new('y', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+        let s = Pixel::new(' ', Color::Rgb { r: 255, g: 255, b: 255 }, Color::Rgb { r: 0, g: 0, b: 0 });
+
+        let mut buf = ScreenBuf::new(Coord{x: 10, y: 10});
+
+        let text = new();
+        
+        {
+            let mut temp = text.borrow_mut();
+
+            temp.entries.push_back(Entry::new("xxxxx"));
+            temp.entries.push_back(Entry::new("yyyyyyyyyy"));
+            temp.entries.push_back(Entry::new("xxxxxxxxxxxx"));
+            temp.entries.push_back(Entry::new("yyy\nyyyy\n"));
+            temp.entries.push_back(Entry::new("xxxxx"));
+        }
+
+        let off = 1;
+        text.borrow().get_draw_data(&mut buf, Coord{x: off, y: 0}, Coord{x: 10, y: 10});
+
+        let expected = vec![
+            y,y,y,y,y,y,y,y,y,y,
+            x,x,x,x,x,x,x,x,x,x,
+            x,x,s,s,s,s,s,s,s,s,
+            y,y,y,s,s,s,s,s,s,s,
+            y,y,y,y,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        //println!("offset: {}", off); 
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+
+        let off = 2;
+        text.borrow().get_draw_data(&mut buf, Coord{x: off, y: 0}, Coord{x: 10, y: 10});
+
+        let expected = vec![
+            x,x,x,x,x,x,x,x,x,x,
+            x,x,s,s,s,s,s,s,s,s,
+            y,y,y,s,s,s,s,s,s,s,
+            y,y,y,y,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        //println!("offset: {}", off); 
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+
+        let off = 3;
+        text.borrow().get_draw_data(&mut buf, Coord{x: off, y: 0}, Coord{x: 10, y: 10});
+
+        let expected = vec![
+            x,x,s,s,s,s,s,s,s,s,
+            y,y,y,s,s,s,s,s,s,s,
+            y,y,y,y,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        //println!("offset: {}", off); 
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+
+        let off = 4;
+        text.borrow().get_draw_data(&mut buf, Coord{x: off, y: 0}, Coord{x: 10, y: 10});
+
+        let expected = vec![
+            y,y,y,s,s,s,s,s,s,s,
+            y,y,y,y,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        //println!("offset: {}", off); 
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+
+        let off = 5;
+        text.borrow().get_draw_data(&mut buf, Coord{x: off, y: 0}, Coord{x: 10, y: 10});
+
+        let expected = vec![
+            y,y,y,y,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        //println!("offset: {}", off); 
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+
+        let off = 6;
+        text.borrow().get_draw_data(&mut buf, Coord{x: off, y: 0}, Coord{x: 10, y: 10});
+
+        let expected = vec![
+            s,s,s,s,s,s,s,s,s,s,
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        //println!("offset: {}", off); 
+        //print_buffer(&buf);
+
+        for (i, x) in expected.iter().enumerate() {
+            assert_eq!(buf.buffer.get_flat(i), *x)
+        }
+
+        let off = 7;
+        text.borrow().get_draw_data(&mut buf, Coord{x: off, y: 0}, Coord{x: 10, y: 10});
+
+        let expected = vec![
+            x,x,x,x,x,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+            s,s,s,s,s,s,s,s,s,s,
+        ];
+
+        //println!("offset: {}", off); 
         //print_buffer(&buf);
 
         for (i, x) in expected.iter().enumerate() {

@@ -14,6 +14,11 @@ impl CoordIter {
             max:     end,
         }
     }
+
+    pub fn skip_lines(mut self, lines: i32) -> Self {
+        self.cur.y += lines;
+        self
+    }
 }
 
 impl Iterator for CoordIter {

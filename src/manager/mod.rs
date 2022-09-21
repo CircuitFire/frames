@@ -1,4 +1,4 @@
 pub mod manager;
-pub use manager::ManagerTrait;
+pub use manager::*;
 
 pub mod layout_manager;
