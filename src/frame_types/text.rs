@@ -64,9 +64,11 @@ impl IFrame for IText {
             }
         }
 
-        for pos in draw_to {
-            if let Some(pixle) = data.get(pos) {
-                screenbuf.set(pos, pixle);
+        for mut pos in draw_to {
+            pos.y -= skip;
+
+            if let Some(pixel) = data.get(pos) {
+                screenbuf.set(pos, pixel);
             }
             else {
                 screenbuf.set(pos, Pixel::Opaque(self.default));
@@ -94,8 +96,8 @@ impl IText {
 pub struct Entry {
     text:       ColorString,
     len:        usize,
-    new_lines:  usize,
-    tabs:       usize,
+    //new_lines:  usize,
+    //tabs:       usize,
     pub colors: Option<ColorSet>,
 }
 
@@ -105,8 +107,8 @@ impl Entry {
 
         Entry {
             len:       text.string.chars().count(),
-            new_lines: text.string.matches("\n").count(),
-            tabs:      text.string.matches("\t").count(),
+            //new_lines: text.string.matches("\n").count(),
+            //tabs:      text.string.matches("\t").count(),
             text,
             colors:    None,
         }
@@ -117,8 +119,8 @@ impl Entry {
 
         Entry {
             len:       text.string.chars().count(),
-            new_lines: text.string.matches("\n").count(),
-            tabs:      text.string.matches("\t").count(),
+            //new_lines: text.string.matches("\n").count(),
+            //tabs:      text.string.matches("\t").count(),
             text,
             colors:    Some(colors),
         }
@@ -129,26 +131,29 @@ impl Entry {
 
         self.text      = text;
         self.len       = self.text.string.chars().count();
-        self.new_lines = self.text.string.matches("\n").count();
-        self.tabs      = self.text.string.matches("\t").count();
+        //self.new_lines = self.text.string.matches("\n").count();
+        //self.tabs      = self.text.string.matches("\t").count();
     }
 
-    fn height(&self, width: usize, indent: &Indent, tab_len: usize) -> usize {
-        let mut hight = self.new_lines + 1;
-        let mut len = self.len + (self.tabs * tab_len) - (self.new_lines + self.tabs);
+    // fn height(&self, width: usize, indent: &Indent, tab_len: usize) -> usize {
+    //     let mut hight = self.new_lines + 1;
+    //     let mut len = self.len + (self.tabs * tab_len) - (self.new_lines + self.tabs);
         
-        //length of first line
-        let first_len = width - indent.normal();
-        if len > first_len {
-            hight += 1;
-            len -= first_len;
-        }
-        else { return hight }
+    //     //length of first line
+    //     let first_len = width - indent.normal();
+    //     if len > first_len {
+    //         hight += 1;
+    //         len -= first_len;
+    //     }
+    //     else { return hight }
 
-        //length of all other lines.
-        let other_len = width - indent.hanging();
-        hight + (len / other_len)
-    }
+    //     //length of all other lines.
+    //     let other_len = width - indent.hanging();
+    //     hight += len / other_len;
+    //     //if len % other_len > 0 { hight += 1 }
+
+    //     hight
+    // }
 
     fn get_color(&self, pos: usize) -> Option<ColorSet> {
         if let Some(color) = self.text.get_color(pos) {
@@ -280,34 +285,36 @@ impl<'a> EntryIter<'a> {
             cur_tab:      None,
         };
 
-        entry_iter.skip(offset.x as usize);
-        
+        //entry_iter.skip(offset.x as usize);
+        entry_iter.go_to(Coord{y: offset.x, x: 0});
+        entry_iter.next_pos = Coord{x: 0, y: 0}; //reset current position because it is changed in go_to.
+
         entry_iter
     }
 
 
-    fn skip(&mut self, mut skip: usize) {
-        while skip > 0 {
-            if let Some(entry) = self.char_iter.cur_entry() {
-                let height = entry.height(self.width as usize, &self.indent, self.tab_len);
+    // fn skip(&mut self, mut skip: usize) {
+    //     while skip > 0 {
+    //         if let Some(entry) = self.char_iter.cur_entry() {
+    //             let height = entry.height(self.width as usize, &self.indent, self.tab_len);
 
-                if height <= skip {
-                    skip -= height;
-                    self.char_iter.cur_entry += 1;
-                }
-                else {
-                    //skipping into somewhere inside an entry.
-                    self.go_to(Coord{y: skip as i32, x: 0});
-                    self.next_pos = Coord{x: 0, y: 0}; //reset current position because it is changed in go_to.
-                    return
-                }
-            }
-            else {
-                //skipped all of the entries.
-                return
-            }
-        }
-    }
+    //             if height <= skip {
+    //                 skip -= height;
+    //                 self.char_iter.cur_entry += 1;
+    //             }
+    //             else {
+    //                 //skipping into somewhere inside an entry.
+    //                 self.go_to(Coord{y: skip as i32, x: 0});
+    //                 self.next_pos = Coord{x: 0, y: 0}; //reset current position because it is changed in go_to.
+    //                 return
+    //             }
+    //         }
+    //         else {
+    //             //skipped all of the entries.
+    //             return
+    //         }
+    //     }
+    // }
 
     fn inc_next_pos(&mut self) {
         self.next_pos.x += 1;
@@ -438,7 +445,7 @@ impl<'a> EntryIter<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_helpers::*;
+    //use crate::test_helpers::*;
 
     #[test]
     fn blank_test() {
