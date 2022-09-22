@@ -64,10 +64,8 @@ impl IFrame for IText {
             }
         }
 
-        for mut pos in draw_to {
-            pos.y -= skip;
-
-            if let Some(pixel) = data.get(pos) {
+        for pos in draw_to {
+            if let Some(pixel) = data.next() {
                 screenbuf.set(pos, pixel);
             }
             else {
